@@ -1,0 +1,68 @@
+#include "/Engine/Public/Platform.ush"
+
+struct FAgent
+{
+	float2 position;
+    float angle;
+};
+
+RWStructuredBuffer<FAgent> agents;
+RWTexture2D<float4> trailmap;
+uint numAgents;
+int width;
+int height;
+float moveSpeed;
+float deltaTime;
+float Time;
+
+uint hash(uint state)
+{
+    state ^= 2747636419u;
+    state *= 2654435769u;
+    state ^= state >> 16;
+    state *= 2654435769u;
+    state ^= state >> 16;
+    state *= 2654435769u;
+    return state;
+}
+
+float nrand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float scaleToRange01(uint state)
+{
+    return state / 4294967295.0;
+}
+
+[numthreads(16, 1, 1)]
+void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+{   
+	if (ThreadId.x >= numAgents) {return;}
+
+    FAgent agent = agents[ThreadId.x];
+
+    float2 pos = agent.position;
+    uint random = hash(pos.y * width + pos.x + hash(ThreadId.x + Time * 100000));
+
+    float2 direction = float2(cos(agent.angle), sin(agent.angle));
+    float2 newPos = agent.position + direction * moveSpeed * min(0.01,deltaTime);
+
+    float value = agent.angle;
+    bool belowX = newPos.x < 0;
+    bool belowY = newPos.y < 0;
+    bool greaterX = newPos.x > width;
+    bool greaterY = newPos.y > height;
+    //if (belowX || belowY || greaterX || greaterY){
+		newPos.x = min(width-0.1, max(0,newPos.x));
+		newPos.y = min(height-0.1, max(0,newPos.y));
+        value = scaleToRange01(random) * 2 * 3.1415;
+
+        
+    //}
+
+    agents[ThreadId.x].position = newPos;
+    agents[ThreadId.x].angle = value;
+    trailmap[int2(newPos.x, newPos.y)] = 1;
+}

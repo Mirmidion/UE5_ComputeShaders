@@ -1,0 +1,38 @@
+#include "/Engine/Public/Platform.ush"
+//#pragma kernel UpdateColourMap
+
+struct SpeciesSettings {
+	float moveSpeed;
+	float turnSpeed;
+
+	float sensorAngleDegrees;
+	float sensorOffsetDst;
+	int sensorSize;
+	float4 colour;
+};
+
+StructuredBuffer<SpeciesSettings> speciesSettings;
+uint numSpecies;
+
+RWTexture2D<float4> TrailMap;
+int width;
+int height;
+
+RWTexture2D<float4> ColourMap;
+[numthreads(8,8,1)]
+void UpdateColourMap (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height) {
+		return;
+	}
+
+	float4 map = TrailMap[id.xy];
+
+	float4 colour = 0;
+	for (uint i = 0; i < numSpecies; i ++) {
+		float4 mask = float4(i==0, i==1, i==2,i==3);
+		colour += speciesSettings[i].colour * dot(map, mask); 
+	}
+	ColourMap[id.xy] = colour;
+
+}

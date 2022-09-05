@@ -1,0 +1,38 @@
+//Since we can't #include private Engine shaders such as Common.ush we have to copy the needed Shaders from the Engine' Shader directory.
+//When this gets chaned in the future, we could change this to #include "/Engine/Private/Common.ush".
+#include "/Engine/Private/Common.ush"
+
+RWTexture2D<float4> trailmap;
+int width;
+int height;
+float deltaTime;
+
+float decayRate;
+float diffuseRate;
+RWTexture2D<float4> DiffusedTrailMap;
+
+[numthreads(1,1,1)]
+void Diffuse (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < 0 || id.x >= (uint)1920 || id.y < 0 || id.y >= (uint)1080) {
+		return;
+	}
+
+	float4 sum = 0;
+	float4 originalCol = DiffusedTrailMap[id.xy];
+	// 3x3 blur
+	for (int offsetX = -1; offsetX <= 1; offsetX ++) {
+		for (int offsetY = -1; offsetY <= 1; offsetY ++) {
+			int sampleX = min(1920-1, max(0, id.x + offsetX));
+			int sampleY = min(1080-1, max(0, id.y + offsetY));
+			sum += DiffusedTrailMap[uint2(sampleX,sampleY)];
+		}
+	}
+
+	float4 blurredCol = sum / 9;
+	float diffuseWeight = saturate(diffuseRate * deltaTime);
+	blurredCol = originalCol * (1 - diffuseWeight) + blurredCol * (diffuseWeight);
+
+	//DiffusedTrailMap[id.xy] = blurredCol * saturate(1 - decayRate * deltaTime);
+	DiffusedTrailMap[id.xy] = max(0, blurredCol - decayRate * deltaTime);
+}
