@@ -3,29 +3,29 @@
 #include "/Engine/Private/Common.ush"
 
 RWTexture2D<float4> trailmap;
+RWTexture2D<float4> DiffusedTrailMap;
 int width;
 int height;
 float deltaTime;
 
 float decayRate;
 float diffuseRate;
-RWTexture2D<float4> DiffusedTrailMap;
 
 [numthreads(1,1,1)]
 void Diffuse (uint3 id : SV_DispatchThreadID)
 {
-	if (id.x < 0 || id.x >= (uint)1920 || id.y < 0 || id.y >= (uint)1080) {
+	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height) {
 		return;
 	}
 
 	float4 sum = 0;
-	float4 originalCol = DiffusedTrailMap[id.xy];
+	float4 originalCol = trailmap[id.xy];
 	// 3x3 blur
 	for (int offsetX = -1; offsetX <= 1; offsetX ++) {
 		for (int offsetY = -1; offsetY <= 1; offsetY ++) {
-			int sampleX = min(1920-1, max(0, id.x + offsetX));
-			int sampleY = min(1080-1, max(0, id.y + offsetY));
-			sum += DiffusedTrailMap[uint2(sampleX,sampleY)];
+			int sampleX = min(width-1, max(0, id.x + offsetX));
+			int sampleY = min(height-1, max(0, id.y + offsetY));
+			sum += trailmap[uint2(sampleX,sampleY)];
 		}
 	}
 

@@ -6,6 +6,8 @@
 #include "ComputeShaderDeclarations.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
+#include "RenderTargetPool.h"
+#include "MoldV2/MoldV2ShaderComponent.h"
 #include "MoldShaderComponent.generated.h"
 
 USTRUCT()
@@ -55,9 +57,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void Reset();
 
+	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int amountOfAgents = 1000;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
+		SpawnMode spawnMode;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int width = TEXTURE_WIDTH;
 
@@ -74,14 +79,14 @@ public:
 		float diffuseRate = .5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool Running = true;
+		bool Paused = false;
 
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 	TRefCountPtr<IPooledRenderTarget> BufferShaderOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		UTextureRenderTarget2D* RenderTarget;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY()
 		UTextureRenderTarget2D* BufferRenderTarget;
 
 protected:

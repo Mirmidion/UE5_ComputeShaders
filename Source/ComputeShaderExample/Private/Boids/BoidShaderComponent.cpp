@@ -118,6 +118,7 @@ void UBoidShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
 
 		RHICommands.SetComputeShader(rhiComputeShader);
+		UE_LOG(LogTemp, Log, TEXT("%d:%d:%d"), cs->positions.GetBaseIndex(), cs->times.GetBaseIndex(), cs->agents.GetBaseIndex())
 
 		DispatchComputeShader(RHICommands, cs, 256, 1, 1);
 

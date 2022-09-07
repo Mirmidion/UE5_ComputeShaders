@@ -39,8 +39,8 @@ public:
 
 class FMoldShaderDeclaration : public FComputeShaderDeclaration
 {
-#define TEXTURE_WIDTH 1920
-#define TEXTURE_HEIGHT 1080
+#define TEXTURE_WIDTH 3840
+#define TEXTURE_HEIGHT 2160
 
 
 	DECLARE_SHADER_TYPE(FMoldShaderDeclaration, Global);
@@ -86,13 +86,13 @@ class FOldDiffuseShaderDeclaration : public FComputeShaderDeclaration
 
 public:
 
-	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
+	LAYOUT_FIELD(FShaderResourceParameter, trailmap,0);
 	LAYOUT_FIELD(FShaderResourceParameter, width);
 	LAYOUT_FIELD(FShaderResourceParameter, height);
 	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
 	LAYOUT_FIELD(FShaderResourceParameter, decayRate);
 	LAYOUT_FIELD(FShaderResourceParameter, diffuseRate);
-	LAYOUT_FIELD(FShaderResourceParameter, DiffusedTrailMap);
+	LAYOUT_FIELD(FShaderResourceParameter, DiffusedTrailMap, 1);
 };
 
 class FUpdateShaderDeclaration : public FComputeShaderDeclaration
