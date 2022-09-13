@@ -7,6 +7,23 @@
 #include "RenderTargetPool.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
+FIntVector4d::FIntVector4d(const int X, const int Y, const int Z, const int W) : X(X), Y(Y), Z(Z), W(W)
+{
+	
+}
+
+FIntVector4d::FIntVector4d() : X(0), Y(0), Z(0), W(0)
+{
+}
+
+FAgentV2::FAgentV2()
+{
+	angle = 0;
+	speciesIndex = 0;
+	speciesMask = FIntVector4d();
+	position = FVector2f();
+}
+
 // Sets default values for this component's properties
 UMoldV2ShaderComponent::UMoldV2ShaderComponent()
 {
@@ -26,7 +43,6 @@ void UMoldV2ShaderComponent::BeginPlay()
 	
 	//RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), TEXTURE_WIDTH, TEXTURE_HEIGHT, ETextureRenderTargetFormat::RTF_RGBA8);
 	Reset();
-	
 }
 
 void UMoldV2ShaderComponent::Reset()
@@ -34,13 +50,15 @@ void UMoldV2ShaderComponent::Reset()
 	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
 
 	NumSpecies = Species.Num();
+	UE_LOG(LogTemp, Log, TEXT("Amount of species: %d"), NumSpecies)
 
 	FRandomStream rng;
 	{
 		TResourceArray<FAgentV2> agentsResourceArray;
 		agentsResourceArray.Init(FAgentV2(), amountOfAgents);
-		for (FAgentV2& Agent : agentsResourceArray)
+		for (int index = 0; index < amountOfAgents; index++)
 		{
+			FAgentV2& Agent = agentsResourceArray[index];
 			FVector2f Center = FVector2f(width / 2.f, height / 2.f);
 			FVector2f Position;
 			const float RandomAngle = rng.FRand() * 2 * PI;
@@ -77,18 +95,18 @@ void UMoldV2ShaderComponent::Reset()
 			}
 			}
 
-			FVector3d SpeciesMask;
+			FIntVector4d SpeciesMask;
 			int speciesIndex = 0;
 
 			if (NumSpecies == 1)
 			{
-				SpeciesMask = FVector3d::ForwardVector;
+				SpeciesMask = FIntVector4d(1,0,0,0);
 			}
 			else
 			{
 				int species = rng.RandRange(1, NumSpecies);
 				speciesIndex = species - 1;
-				SpeciesMask = FVector3d((species == 1) ? 1 : 0, (species == 2) ? 1 : 0, (species == 3) ? 1 : 0);
+				SpeciesMask = FIntVector4d((species == 1) ? 1 : 0, (species == 2) ? 1 : 0, (species == 3) ? 1 : 0, (species == 4) ? 1 : 0);
 			}
 
 			Agent.position = Position;
@@ -96,10 +114,10 @@ void UMoldV2ShaderComponent::Reset()
 			Agent.speciesIndex = speciesIndex;
 			Agent.speciesMask = SpeciesMask;
 
-			/*UE_LOG(LogTemp, Log, TEXT("Position: %s"), *Agent.position.ToString())
-			UE_LOG(LogTemp, Log, TEXT("Angle: %s"), *FString::SanitizeFloat(Agent.angle))
-			UE_LOG(LogTemp, Log, TEXT("Index: %d"), Agent.speciesIndex)
-			UE_LOG(LogTemp, Log, TEXT("Mask: %s"), *Agent.speciesMask.ToString())*/
+			//UE_LOG(LogTemp, Log, TEXT("Position: %s"), *Agent.position.ToString())
+			//UE_LOG(LogTemp, Log, TEXT("Angle: %s"), *FString::SanitizeFloat(Agent.angle))
+			//UE_LOG(LogTemp, Log, TEXT("Index: %d"), Agent.speciesIndex)
+			//UE_LOG(LogTemp, Log, TEXT("Mask: %s"), *Agent.speciesMask.ToString())
 		}
 
 		FRHIResourceCreateInfo createInfo{ *FString("") };
@@ -111,18 +129,44 @@ void UMoldV2ShaderComponent::Reset()
 
 	{
 		TResourceArray<FSpeciesSettings> speciesResourceArray;
-		speciesResourceArray.Init(FSpeciesSettings(), NumSpecies);
-
-		for (int Index = 0; Index < NumSpecies; Index++)
-		{
-			speciesResourceArray[Index] = Species[Index];
-		}
-
+		speciesResourceArray.Append(Species);
+		
 		FRHIResourceCreateInfo createInfo{ *FString("") };
 		createInfo.ResourceArray = &speciesResourceArray;
 
 		_speciesBuffer = RHICreateStructuredBuffer(sizeof(FSpeciesSettings), sizeof(FSpeciesSettings) * NumSpecies, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
 		_speciesBufferUAV = RHICreateUnorderedAccessView(_speciesBuffer, false, false);
+	}
+	return;
+
+	DiffuseTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
+	DiffuseTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+
+	TrailTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
+	TrailTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+}
+
+void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)
+{
+	if (!TrailMapOutput.IsValid())
+	{
+		FPooledRenderTargetDesc TrailMapOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(TrailTarget->SizeX, TrailTarget->SizeY), TrailTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		TrailMapOutputDesc.DebugName = TEXT("TrailMap_Output_RenderTarget");
+		GRenderTargetPool.FindFreeElement(RHICommands, TrailMapOutputDesc, TrailMapOutput, TEXT("TrailMap_Output_RenderTarget"));
+	}
+
+	if (!DiffusedTrailMapOutput.IsValid())
+	{
+		FPooledRenderTargetDesc DiffuseOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DiffuseTarget->SizeX, DiffuseTarget->SizeY), DiffuseTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		DiffuseOutputDesc.DebugName = TEXT("DiffusedTrailMap_Output_RenderTarget");
+		GRenderTargetPool.FindFreeElement(RHICommands, DiffuseOutputDesc, DiffusedTrailMapOutput, TEXT("DiffusedTrailMap_Output_RenderTarget"));
+	}
+
+	if (!DisplayTrailMapOutput.IsValid())
+	{
+		FPooledRenderTargetDesc DisplayOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DisplayTarget->SizeX, DisplayTarget->SizeY), DisplayTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		DisplayOutputDesc.DebugName = TEXT("DisplayTrailMap_Output_RenderTarget");
+		GRenderTargetPool.FindFreeElement(RHICommands, DisplayOutputDesc, DisplayTrailMapOutput, TEXT("DisplayTrailMap_Output_RenderTarget"));
 	}
 }
 
@@ -137,29 +181,7 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-			if (!TrailMapOutput.IsValid())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Not Valid"));
-				FPooledRenderTargetDesc TrailMapOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(TrailMap->SizeX, TrailMap->SizeY), TrailMap->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
-				TrailMapOutputDesc.DebugName = TEXT("TrailMap_Output_RenderTarget");
-				GRenderTargetPool.FindFreeElement(RHICommands, TrailMapOutputDesc, TrailMapOutput, TEXT("TrailMap_Output_RenderTarget"));
-			}
-
-			if (!DiffusedTrailMapOutput.IsValid())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Not Valid"));
-				FPooledRenderTargetDesc DiffuseOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DiffusedTrailMap->SizeX, DiffusedTrailMap->SizeY), DiffusedTrailMap->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
-				DiffuseOutputDesc.DebugName = TEXT("DiffusedTrailMap_Output_RenderTarget");
-				GRenderTargetPool.FindFreeElement(RHICommands, DiffuseOutputDesc, DiffusedTrailMapOutput, TEXT("DiffusedTrailMap_Output_RenderTarget"));
-			}
-
-			if (!DisplayTrailMapOutput.IsValid())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Not Valid"));
-				FPooledRenderTargetDesc DisplayOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DisplayTrailMap->SizeX, DisplayTrailMap->SizeY), DisplayTrailMap->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
-				DisplayOutputDesc.DebugName = TEXT("DisplayTrailMap_Output_RenderTarget");
-				GRenderTargetPool.FindFreeElement(RHICommands, DisplayOutputDesc, DisplayTrailMapOutput, TEXT("DisplayTrailMap_Output_RenderTarget"));
-			}
+			CheckRenderBuffers(RHICommands);
 
 			{
 				TShaderMapRef<FUpdateShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
@@ -172,7 +194,7 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numAgents.GetBaseIndex(), sizeof(int), &amountOfAgents);
 
-				RHICommands.SetUAVParameter(rhiComputeShader, cs->TrailMap.GetBaseIndex(), DisplayTrailMapOutput->GetRenderTargetItem().UAV);
+				RHICommands.SetUAVParameter(rhiComputeShader, cs->TrailMap.GetBaseIndex(), TrailMapOutput->GetRenderTargetItem().UAV);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->height.GetBaseIndex(), sizeof(int), &height);
 
@@ -183,23 +205,61 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 				RHICommands.SetComputeShader(rhiComputeShader);
 
+				if (Time > 3)
 				DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
 
 				{
-					RHICommands.CopyTexture(DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMap->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}
+
+				/*{
+					TResourceArray<FAgentV2> agentsResourceArray;
+					agentsResourceArray.SetAllowCPUAccess(true);
+					agentsResourceArray.Init(FAgentV2(), amountOfAgents);
+					uint8* data = (uint8*)RHILockBuffer(_agentsBuffer, 0, amountOfAgents * sizeof(FAgentV2), RLM_ReadOnly);
+					FMemory::Memcpy(agentsResourceArray.GetData(), data, amountOfAgents * sizeof(FAgentV2));
+
+					RHIUnlockBuffer(_agentsBuffer);
+					if (agentsResourceArray.GetAllowCPUAccess())
+					{
+						FString ToPrint = FString("Delta: ").Append(FString::SanitizeFloat(Delta)).Append(" speed: ").Append(FString::SanitizeFloat(speed));
+						ToPrint = ToPrint.Append(" height: ").Append(FString::FromInt(height));
+						ToPrint = ToPrint.Append(" width: ").Append(FString::FromInt(width));
+						ToPrint = ToPrint.Append(" num agents: ").Append(FString::FromInt(amountOfAgents));
+						ToPrint = ToPrint.Append(" agent1angle: ").Append(FString::SanitizeFloat(agentsResourceArray[6].angle));
+						UE_LOG(LogTemp, Log, TEXT("%s"), *agentsResourceArray[6].position.ToString());
+						UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
+
+					}
+
+					if (Paused)
+					{
+						for (int32 Index = 0; Index < agentsResourceArray.Num(); Index++)
+						{
+							FAgentV2& agent = agentsResourceArray[Index];
+							FString ToPrint = FString("agent position: ").Append(agent.position.ToString());
+							ToPrint = ToPrint.Append(" agent angle: ").Append(FString::SanitizeFloat(agent.angle));
+							UE_LOG(LogTemp, Log, TEXT("%d"), Index);
+							UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
+						}
+						Paused = false;
+					}
+				}*/
 			}
 		});
-		
-		/*ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
+	
+		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-			{
+				CheckRenderBuffers(RHICommands);
+
+				{
 				TShaderMapRef<FDiffuseShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
 				FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 
-				RHICommands.SetUAVParameter(rhiComputeShader, cs->TrailMap.GetBaseIndex(), DisplayTrailMapOutput->GetRenderTargetItem().UAV);
+				RHICommands.SetUAVParameter(rhiComputeShader, cs->TrailMap.GetBaseIndex(), DiffusedTrailMapOutput->GetRenderTargetItem().UAV);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->height.GetBaseIndex(), sizeof(int), &height);
 
@@ -207,22 +267,24 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->decayRate.GetBaseIndex(), sizeof(float), &decayRate);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->diffuseRate.GetBaseIndex(), sizeof(float), &diffuseRate);
-				RHICommands.SetUAVParameter(rhiComputeShader, cs->DiffusedTrailMap.GetBaseIndex(), DisplayTrailMapOutput->GetRenderTargetItem().UAV);
+				RHICommands.SetUAVParameter(rhiComputeShader, cs->DiffusedTrailMap.GetBaseIndex(), TrailMapOutput->GetRenderTargetItem().UAV);
 
 				RHICommands.SetComputeShader(rhiComputeShader);
 
 				DispatchComputeShader(RHICommands, cs, width, height, 1);
 
 				{
-					RHICommands.CopyTexture(DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailMap->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+					//RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DiffuseTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}
 			}
-		});*/
-
-
-		/*ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
+		});
+		return;
+		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
+			CheckRenderBuffers(RHICommands);
 			{
 				TShaderMapRef<FColorMapShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
@@ -242,9 +304,9 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				DispatchComputeShader(RHICommands, cs, width, height, 1);
 
 				{
-					RHICommands.CopyTexture(DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMap->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}
 			}
-		});*/
+		});
 }
 

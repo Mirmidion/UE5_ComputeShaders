@@ -144,4 +144,20 @@ void FColorMapShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShade
 
 IMPLEMENT_SHADER_TYPE(, FColorMapShaderDeclaration, TEXT("/ComputeShaderPlugin/ColorV2.usf"), TEXT("UpdateColourMap"), SF_Compute);
 
+FPerlinShaderDeclaration::FPerlinShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
+{
+	texture.Bind(Initializer.ParameterMap, TEXT("noisemap"));
+	start.Bind(Initializer.ParameterMap, TEXT("start"));
+	dimensions.Bind(Initializer.ParameterMap, TEXT("dimensions"));
+	offset.Bind(Initializer.ParameterMap, TEXT("offset"));
+}
+
+void FPerlinShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FPerlinShaderDeclaration, TEXT("/ComputeShaderPlugin/PerlinNoise.usf"), TEXT("GenerateNoise"), SF_Compute);
 

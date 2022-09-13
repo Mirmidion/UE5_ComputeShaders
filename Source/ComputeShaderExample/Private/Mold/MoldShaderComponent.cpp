@@ -6,6 +6,7 @@
 #include "ComputeShaderDeclarations.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
+#include "Kismet/KismetMathLibrary.h"
 #include "MoldV2/MoldV2ShaderComponent.h"
 
 // Sets default values for this component's properties

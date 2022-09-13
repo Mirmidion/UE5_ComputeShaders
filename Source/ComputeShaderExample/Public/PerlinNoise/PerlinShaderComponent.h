@@ -7,43 +7,46 @@
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 #include "RenderTargetPool.h"
-#include "MoldV2/MoldV2ShaderComponent.h"
-#include "MoldShaderComponent.generated.h"
+#include "PerlinShaderComponent.generated.h"
 
-USTRUCT()
-struct FAgent
+USTRUCT(BlueprintType)
+struct FIntVector2d
 {
 	GENERATED_USTRUCT_BODY()
 
-	FVector2f position;
-	float angle;
+	UPROPERTY(EditAnywhere)
+		int X;
+	UPROPERTY(EditAnywhere)
+		int Y;
+
+public:
+	FIntVector2d(const int X, const int Y);
+	FIntVector2d();
 };
 
 template<>
-struct TShaderParameterTypeInfo<FAgent>
+struct TShaderParameterTypeInfo<FIntVector2d>
 {
-	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
+	static constexpr EUniformBufferBaseType BaseType = UBMT_INT32;
 	static constexpr int32 NumRows = 1;
-	static constexpr int32 NumColumns = 3;
+	static constexpr int32 NumColumns = 2;
 	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = 16;
+	static constexpr int32 Alignment = alignof(FIntVector2d);
 	static constexpr bool bIsStoredInConstantBuffer = true;
 
-	using TAlignedType = TAlignedTypedef<FAgent, Alignment>::Type;
+	using TAlignedType = TAlignedTypedef<FIntVector2d, Alignment>::Type;
 
 	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
 };
 
-
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COMPUTESHADEREXAMPLE_API UMoldShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API UPerlinShaderComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:	
 	// Sets default values for this component's properties
-	UMoldShaderComponent();
+	UPerlinShaderComponent();
 
 protected:
 	// Called when the game starts
@@ -60,38 +63,25 @@ public:
 	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		int amountOfAgents = 1000;
+		FVector Position;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		SpawnMode spawnMode;
+		float Offset = 50;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
+		FIntVector2d Dimensions = FIntVector2d(TEXTURE_WIDTH, TEXTURE_HEIGHT);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
 		int width = TEXTURE_WIDTH;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
 		int height = TEXTURE_HEIGHT;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		float speed = 1000;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta = (ClampMin = 0))
-		float decayRate = .5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta=(ClampMin=0))
-		float diffuseRate = .5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		bool Paused = false;
-
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
-	TRefCountPtr<IPooledRenderTarget> BufferShaderOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = "Simulation Materials")
 		UTextureRenderTarget2D* RenderTarget;
-	UPROPERTY()
-		UTextureRenderTarget2D* BufferRenderTarget;
 
 protected:
-	FBufferRHIRef _agentsBuffer;
-	FUnorderedAccessViewRHIRef _agentsBufferUAV;
+	FBufferRHIRef _valuesBuffer;
+	FUnorderedAccessViewRHIRef _valuesBufferUAV;
 
 	float Delta;
 	float Time;

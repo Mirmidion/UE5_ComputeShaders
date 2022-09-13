@@ -11,7 +11,7 @@ struct SpeciesSettings {
 	float4 colour;
 };
 
-StructuredBuffer<SpeciesSettings> speciesSettings;
+RWStructuredBuffer<SpeciesSettings> speciesSettings;
 uint numSpecies;
 
 RWTexture2D<float4> TrailMap;
@@ -26,13 +26,13 @@ void UpdateColourMap (uint3 id : SV_DispatchThreadID)
 		return;
 	}
 
-	float4 map = TrailMap[id.xy];
+	float4 map = ColourMap[id.xy];
 
 	float4 colour = 0;
 	for (uint i = 0; i < numSpecies; i ++) {
 		float4 mask = float4(i==0, i==1, i==2,i==3);
 		colour += speciesSettings[i].colour * dot(map, mask); 
 	}
+	
 	ColourMap[id.xy] = colour;
-
 }

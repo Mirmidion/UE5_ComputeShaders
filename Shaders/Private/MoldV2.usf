@@ -18,7 +18,7 @@ struct SpeciesSettings {
 	float4 colour;
 };
 
-StructuredBuffer<SpeciesSettings> speciesSettings;
+RWStructuredBuffer<SpeciesSettings> speciesSettings;
 uint numSpecies;
 
 
@@ -81,7 +81,7 @@ void Update (uint3 id : SV_DispatchThreadID)
 	if (id.x >= numAgents) {
 		return;
 	}
-
+	
 	
 	AgentV2 agent = agents[id.x];
 	SpeciesSettings settings = speciesSettings[agent.speciesIndex];
@@ -100,7 +100,7 @@ void Update (uint3 id : SV_DispatchThreadID)
 	float turnSpeed = settings.turnSpeed * 2 * 3.1415;
 	float angleOld = agents[id.x].angle;
 	
-	/* Continue in same direction
+	// Continue in same direction
 	if (weightForward > weightLeft && weightForward > weightRight) {
 		agents[id.x].angle = angleOld;
 	}
@@ -114,12 +114,12 @@ void Update (uint3 id : SV_DispatchThreadID)
 	// Turn left
 	else if (weightLeft > weightRight) {
 		agents[id.x].angle = randomSteerStrength * turnSpeed * deltaTime+ angleOld;
-	}*/
+	}
 	
 	
 	// Update position
 	float2 direction = float2(cos(agent.angle), sin(agent.angle));
-	float2 newPos = agent.position + direction * deltaTime * settings.moveSpeed;
+	float2 newPos = agent.position + direction * deltaTime *  settings.moveSpeed;
 
 	
 	// Clamp position to map boundaries, and pick new random move dir if hit boundary

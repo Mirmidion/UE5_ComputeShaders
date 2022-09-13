@@ -18,6 +18,25 @@ enum class SpawnMode : uint8
 };
 
 USTRUCT()
+struct FIntVector4d
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere)
+		int X;
+	UPROPERTY(EditAnywhere)
+		int Y;
+	UPROPERTY(EditAnywhere)
+		int Z;
+	UPROPERTY(EditAnywhere)
+		int W;
+
+public:
+	FIntVector4d(const int X, const int Y, const int Z, const int W);
+	FIntVector4d();
+};
+
+USTRUCT()
 struct FAgentV2
 {
 	GENERATED_USTRUCT_BODY()
@@ -27,9 +46,12 @@ struct FAgentV2
 	UPROPERTY(EditAnywhere)
 		float angle;
 	UPROPERTY(EditAnywhere)
-		FVector4d speciesMask;
+		FIntVector4d speciesMask;
 	UPROPERTY(EditAnywhere)
 		int speciesIndex;
+
+public:
+	FAgentV2();
 };
 
 USTRUCT()
@@ -53,16 +75,16 @@ struct FSpeciesSettings
 };
 
 template<>
-struct TShaderParameterTypeInfo<FAgentV2>
+struct TShaderParameterTypeInfo<FIntVector4d>
 {
-	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
+	static constexpr EUniformBufferBaseType BaseType = UBMT_INT32;
 	static constexpr int32 NumRows = 1;
-	static constexpr int32 NumColumns = 8;
+	static constexpr int32 NumColumns = 4;
 	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = alignof(FAgentV2);
+	static constexpr int32 Alignment = alignof(FIntVector4d);
 	static constexpr bool bIsStoredInConstantBuffer = true;
 
-	using TAlignedType = TAlignedTypedef<FAgentV2, Alignment>::Type;
+	using TAlignedType = TAlignedTypedef<FIntVector4d, Alignment>::Type;
 
 	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
 };
@@ -78,6 +100,21 @@ struct TShaderParameterTypeInfo<FSpeciesSettings>
 	static constexpr bool bIsStoredInConstantBuffer = true;
 
 	using TAlignedType = TAlignedTypedef<FSpeciesSettings, Alignment>::Type;
+
+	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
+};
+
+template<>
+struct TShaderParameterTypeInfo<FAgentV2>
+{
+	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
+	static constexpr int32 NumRows = 1;
+	static constexpr int32 NumColumns = 8;
+	static constexpr int32 NumElements = 0;
+	static constexpr int32 Alignment = 16;
+	static constexpr bool bIsStoredInConstantBuffer = true;
+
+	using TAlignedType = TAlignedTypedef<FAgentV2, Alignment>::Type;
 
 	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
 };
@@ -99,6 +136,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
 
 	UFUNCTION(BlueprintCallable)
 		void Reset();
@@ -113,9 +151,6 @@ public:
 		int amountOfAgents = 100;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		SpawnMode spawnMode;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float speed = 100.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Trail Settings")
 		float trailWeight = 1;
@@ -137,11 +172,13 @@ public:
 	TRefCountPtr<IPooledRenderTarget> DisplayTrailMapOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-		UTextureRenderTarget2D* TrailMap;
+		UTextureRenderTarget2D* TrailTarget;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-		UTextureRenderTarget2D* DiffusedTrailMap;
+		UTextureRenderTarget2D* DiffuseTarget;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-		UTextureRenderTarget2D* DisplayTrailMap;
+		UTextureRenderTarget2D* DisplayTarget;
+
+	bool Paused = true;
 
 protected:
 	FBufferRHIRef _agentsBuffer;

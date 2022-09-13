@@ -180,3 +180,25 @@ public:
 
 	LAYOUT_FIELD(FShaderResourceParameter, ColourMap);
 };
+
+class FPerlinShaderDeclaration : public FComputeShaderDeclaration
+{
+
+	DECLARE_SHADER_TYPE(FPerlinShaderDeclaration, Global);
+
+	FPerlinShaderDeclaration() {}
+
+	explicit FPerlinShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+	LAYOUT_FIELD(FShaderResourceParameter, texture);
+	LAYOUT_FIELD(FShaderResourceParameter, start);
+	LAYOUT_FIELD(FShaderResourceParameter, dimensions);
+	LAYOUT_FIELD(FShaderResourceParameter, offset);
+};
