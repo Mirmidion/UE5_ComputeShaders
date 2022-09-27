@@ -7,37 +7,10 @@
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 #include "RenderTargetPool.h"
+#include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "PerlinShaderComponent.generated.h"
 
-USTRUCT(BlueprintType)
-struct FIntVector2d
-{
-	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(EditAnywhere)
-		int X;
-	UPROPERTY(EditAnywhere)
-		int Y;
-
-public:
-	FIntVector2d(const int X, const int Y);
-	FIntVector2d();
-};
-
-template<>
-struct TShaderParameterTypeInfo<FIntVector2d>
-{
-	static constexpr EUniformBufferBaseType BaseType = UBMT_INT32;
-	static constexpr int32 NumRows = 1;
-	static constexpr int32 NumColumns = 2;
-	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = alignof(FIntVector2d);
-	static constexpr bool bIsStoredInConstantBuffer = true;
-
-	using TAlignedType = TAlignedTypedef<FIntVector2d, Alignment>::Type;
-
-	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
-};
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class COMPUTESHADEREXAMPLE_API UPerlinShaderComponent : public UActorComponent
@@ -63,20 +36,19 @@ public:
 	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		FVector Position;
+		FVector2D Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
+		float posY;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
 		float Offset = 50;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		FIntVector2d Dimensions = FIntVector2d(TEXTURE_WIDTH, TEXTURE_HEIGHT);
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int width = TEXTURE_WIDTH;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int height = TEXTURE_HEIGHT;
+		int Octaves = 4;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
+		FIntVector2d Dimensions = FIntVector2d(1920, 1080);
 
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = "Simulation Materials")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
 		UTextureRenderTarget2D* RenderTarget;
 
 protected:

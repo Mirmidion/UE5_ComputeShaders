@@ -198,7 +198,9 @@ class FPerlinShaderDeclaration : public FComputeShaderDeclaration
 
 public:
 	LAYOUT_FIELD(FShaderResourceParameter, texture);
-	LAYOUT_FIELD(FShaderResourceParameter, start);
+	LAYOUT_FIELD(FShaderResourceParameter, start); 
+	LAYOUT_FIELD(FShaderResourceParameter, posY);
 	LAYOUT_FIELD(FShaderResourceParameter, dimensions);
 	LAYOUT_FIELD(FShaderResourceParameter, offset);
+	LAYOUT_FIELD(FShaderResourceParameter, octaves);
 };

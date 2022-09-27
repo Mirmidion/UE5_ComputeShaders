@@ -14,21 +14,12 @@ APerlinShaderActor::APerlinShaderActor()
 
 	ShaderComponent = CreateDefaultSubobject<UPerlinShaderComponent>(FName("ShaderComponent"));
 	AddOwnedComponent(ShaderComponent);
-
-	DrawComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Static Mesh"));
-	DrawComponent->AttachToComponent(Component, FAttachmentTransformRules::KeepWorldTransform);
-
 }
 
 // Called when the game starts or when spawned
 void APerlinShaderActor::BeginPlay()
 {
 	Super::BeginPlay();
-	if (DrawComponent) {
-		UMaterialInstanceDynamic* MID = DrawComponent->CreateAndSetMaterialInstanceDynamic(0);
-		if (MID)
-			MID->SetTextureParameterValue("InputTexture", (UTexture*)ShaderComponent->RenderTarget);
-	}
 }
 
 // Called every frame

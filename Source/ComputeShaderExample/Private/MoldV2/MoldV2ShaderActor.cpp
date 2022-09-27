@@ -27,6 +27,5 @@ void AMoldV2ShaderActor::BeginPlay()
 void AMoldV2ShaderActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 

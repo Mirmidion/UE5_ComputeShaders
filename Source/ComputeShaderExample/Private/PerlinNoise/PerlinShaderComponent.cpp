@@ -42,10 +42,6 @@ void UPerlinShaderComponent::BeginPlay()
 void UPerlinShaderComponent::Reset()
 {
 	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
-
-	FRandomStream rng;
-	TResourceArray<FVector2f> positionResourceArray;
-
 	Time = 0;
 }
 
@@ -76,51 +72,19 @@ void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 			
 			RHICommands.SetUAVParameter(rhiComputeShader, cs->texture.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(FVector), &Position);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(FVector2D), &Position);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(float), &posY);
 			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->dimensions.GetBaseIndex(), sizeof(FIntVector2d), &Dimensions);
 			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->offset.GetBaseIndex(), sizeof(float), &Offset);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->octaves.GetBaseIndex(), sizeof(int), &Octaves);
 
 			RHICommands.SetComputeShader(rhiComputeShader);
 
-			DispatchComputeShader(RHICommands, cs, width, height, 1);
+			DispatchComputeShader(RHICommands, cs, Dimensions.X, Dimensions.Y, 1);
 
 			{
 				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 			}
-			// read back the data
-			/*{
-				TResourceArray<FAgent> agentsResourceArray;
-				agentsResourceArray.SetAllowCPUAccess(true);
-				agentsResourceArray.Init(FAgent(), amountOfAgents);
-				uint8* data = (uint8*)RHILockBuffer(_agentsBuffer, 0, amountOfAgents * sizeof(FAgent), RLM_ReadOnly);
-				FMemory::Memcpy(agentsResourceArray.GetData(), data, amountOfAgents * sizeof(FAgent));
-
-				RHIUnlockBuffer(_agentsBuffer);
-				if (agentsResourceArray.GetAllowCPUAccess())
-				{
-					FString ToPrint = FString("Delta: ").Append(FString::SanitizeFloat(Delta)).Append(" speed: ").Append(FString::SanitizeFloat(speed));
-					ToPrint = ToPrint.Append(" height: ").Append(FString::FromInt(height));
-					ToPrint = ToPrint.Append(" width: ").Append(FString::FromInt(width));
-					ToPrint = ToPrint.Append(" num agents: ").Append(FString::FromInt(amountOfAgents));
-					ToPrint = ToPrint.Append(" agent1angle: ").Append(FString::SanitizeFloat(agentsResourceArray[0].angle));
-					UE_LOG(LogTemp, Log, TEXT("%s"), *agentsResourceArray[0].position.ToString());
-					UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-
-				}
-
-				if (Paused)
-				{
-					for (int32 Index = 0; Index < agentsResourceArray.Num(); Index++)
-					{
-						FAgent& agent = agentsResourceArray[Index];
-						FString ToPrint = FString("agent position: ").Append(agent.position.ToString());
-						ToPrint = ToPrint.Append(" agent angle: ").Append(FString::SanitizeFloat(agent.angle));
-						UE_LOG(LogTemp, Log, TEXT("%d"), Index);
-						UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-					}
-					Paused = false;
-				}
-			}*/
 		});
 }
 

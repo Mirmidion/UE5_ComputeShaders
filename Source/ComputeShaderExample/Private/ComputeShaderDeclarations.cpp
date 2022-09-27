@@ -148,8 +148,10 @@ FPerlinShaderDeclaration::FPerlinShaderDeclaration(const ShaderMetaType::Compile
 {
 	texture.Bind(Initializer.ParameterMap, TEXT("noisemap"));
 	start.Bind(Initializer.ParameterMap, TEXT("start"));
+	posY.Bind(Initializer.ParameterMap, TEXT("posY"));
 	dimensions.Bind(Initializer.ParameterMap, TEXT("dimensions"));
 	offset.Bind(Initializer.ParameterMap, TEXT("offset"));
+	octaves.Bind(Initializer.ParameterMap, TEXT("octaves"));
 }
 
 void FPerlinShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)

@@ -26,6 +26,4 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = Components)
 		UPerlinShaderComponent* ShaderComponent;
-	UPROPERTY(EditAnywhere, Category = Components)
-		UStaticMeshComponent* DrawComponent;
 };

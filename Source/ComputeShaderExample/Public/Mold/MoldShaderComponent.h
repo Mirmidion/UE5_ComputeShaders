@@ -10,29 +10,7 @@
 #include "MoldV2/MoldV2ShaderComponent.h"
 #include "MoldShaderComponent.generated.h"
 
-USTRUCT()
-struct FAgent
-{
-	GENERATED_USTRUCT_BODY()
 
-	FVector2f position;
-	float angle;
-};
-
-template<>
-struct TShaderParameterTypeInfo<FAgent>
-{
-	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
-	static constexpr int32 NumRows = 1;
-	static constexpr int32 NumColumns = 3;
-	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = 16;
-	static constexpr bool bIsStoredInConstantBuffer = true;
-
-	using TAlignedType = TAlignedTypedef<FAgent, Alignment>::Type;
-
-	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
-};
 
 
 
@@ -62,7 +40,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
 		int amountOfAgents = 1000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		SpawnMode spawnMode;
+		SpawnMode spawnMode = SpawnMode::Point;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
 		int width = TEXTURE_WIDTH;
 
@@ -84,9 +62,9 @@ public:
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 	TRefCountPtr<IPooledRenderTarget> BufferShaderOutput;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = "Simulation Materials")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
 		UTextureRenderTarget2D* RenderTarget;
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
 		UTextureRenderTarget2D* BufferRenderTarget;
 
 protected:

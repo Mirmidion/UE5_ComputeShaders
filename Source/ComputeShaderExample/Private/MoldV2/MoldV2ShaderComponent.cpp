@@ -7,22 +7,7 @@
 #include "RenderTargetPool.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
-FIntVector4d::FIntVector4d(const int X, const int Y, const int Z, const int W) : X(X), Y(Y), Z(Z), W(W)
-{
-	
-}
 
-FIntVector4d::FIntVector4d() : X(0), Y(0), Z(0), W(0)
-{
-}
-
-FAgentV2::FAgentV2()
-{
-	angle = 0;
-	speciesIndex = 0;
-	speciesMask = FIntVector4d();
-	position = FVector2f();
-}
 
 // Sets default values for this component's properties
 UMoldV2ShaderComponent::UMoldV2ShaderComponent()
@@ -60,7 +45,7 @@ void UMoldV2ShaderComponent::Reset()
 		{
 			FAgentV2& Agent = agentsResourceArray[index];
 			FVector2f Center = FVector2f(width / 2.f, height / 2.f);
-			FVector2f Position;
+			FVector2Float Position;
 			const float RandomAngle = rng.FRand() * 2 * PI;
 			const FVector randomVec = rng.GetUnitVector();
 			float Angle = 0.f;
@@ -69,7 +54,7 @@ void UMoldV2ShaderComponent::Reset()
 			{
 			case SpawnMode::Random:
 			{
-				Position = FVector2f(rng.FRandRange(0, width), rng.FRandRange(0, height));
+				Position = FVector2Float(rng.FRandRange(0, width), rng.FRandRange(0, height));
 				Angle = RandomAngle;
 				break;
 			}
@@ -81,7 +66,7 @@ void UMoldV2ShaderComponent::Reset()
 			}
 			case SpawnMode::InwardCircle:
 			{
-				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.5f;
+				Position = Center + FVector2Float(randomVec.X, randomVec.Y) * height * 0.5f;
 				FVector2f Normalized = Center - Position;
 				Normalized.Normalize();
 				Angle = FMath::Atan2(Normalized.Y, Normalized.X);
@@ -137,7 +122,7 @@ void UMoldV2ShaderComponent::Reset()
 		_speciesBuffer = RHICreateStructuredBuffer(sizeof(FSpeciesSettings), sizeof(FSpeciesSettings) * NumSpecies, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
 		_speciesBufferUAV = RHICreateUnorderedAccessView(_speciesBuffer, false, false);
 	}
-	return;
+	//return;
 
 	DiffuseTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	DiffuseTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
@@ -274,7 +259,7 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				DispatchComputeShader(RHICommands, cs, width, height, 1);
 
 				{
-					//RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
 					RHICommands.CopyTexture(DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DiffuseTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}

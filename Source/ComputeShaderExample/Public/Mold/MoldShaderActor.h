@@ -27,6 +27,4 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = Components)
 		UMoldShaderComponent* ShaderComponent;
-	UPROPERTY(EditAnywhere, Category = Components)
-		UStaticMeshComponent* DrawComponent;
 };
