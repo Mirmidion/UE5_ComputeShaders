@@ -9,7 +9,7 @@
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "MoldV2ShaderComponent.generated.h"
 
-UENUM()
+UENUM(BlueprintType)
 enum class SpawnMode : uint8
 {
 	Random,

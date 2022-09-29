@@ -60,21 +60,23 @@ void UMoldV2ShaderComponent::Reset()
 			}
 			case SpawnMode::Point:
 			{
-				Position = Center;
+				Position = FVector2Float(Center.X, Center.Y);
 				Angle = RandomAngle;
 				break;
 			}
 			case SpawnMode::InwardCircle:
-			{
-				Position = Center + FVector2Float(randomVec.X, randomVec.Y) * height * 0.5f;
-				FVector2f Normalized = Center - Position;
-				Normalized.Normalize();
-				Angle = FMath::Atan2(Normalized.Y, Normalized.X);
-				break;
-			}
+				{
+					FVector2f Value = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.5f;
+					Position = FVector2Float(Value.X, Value.Y);
+					FVector2f Normalized = Center - FVector2f(Position.X, Position.Y);
+					Normalized.Normalize();
+					Angle = FMath::Atan2(Normalized.Y, Normalized.X);
+					break;
+				}
 			case SpawnMode::RandomCircle:
 			{
-				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.15f;
+				FVector2f Value = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.15f;
+				Position = FVector2Float(Value.X, Value.Y);
 				Angle = RandomAngle;
 				break;
 			}

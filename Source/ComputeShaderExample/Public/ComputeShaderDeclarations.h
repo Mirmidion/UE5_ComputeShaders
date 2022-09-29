@@ -39,8 +39,8 @@ public:
 
 class FMoldShaderDeclaration : public FComputeShaderDeclaration
 {
-#define TEXTURE_WIDTH 3840
-#define TEXTURE_HEIGHT 2160
+#define TEXTURE_WIDTH 1920
+#define TEXTURE_HEIGHT 1080
 
 
 	DECLARE_SHADER_TYPE(FMoldShaderDeclaration, Global);

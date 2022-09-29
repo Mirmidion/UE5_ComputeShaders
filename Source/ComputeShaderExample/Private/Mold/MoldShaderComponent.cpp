@@ -36,30 +36,12 @@ void UMoldShaderComponent::Reset()
 	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
 
 	FRandomStream rng;
-	TResourceArray<FVector2f> positionResourceArray;
-
-	{
-		positionResourceArray.Init(FVector2f(0, 0), amountOfAgents);
-
-
-		for (FVector2f& position : positionResourceArray)
-		{
-			FVector rand = rng.GetUnitVector();
-			FVector2f flat = FVector2f(rand.X, rand.Y);
-			position = FVector2f(960, 540);
-		}
-
-		FRHIResourceCreateInfo createInfo{ *FString("") };
-		createInfo.ResourceArray = &positionResourceArray;
-	}
-
-
-
+	
 	{
 		TResourceArray<FAgent> agentsResourceArray;
 		agentsResourceArray.Init(FAgent(), amountOfAgents);
 
-		for (int i = 0; i < positionResourceArray.Num(); i++)
+		for (int i = 0; i < amountOfAgents; i++)
 		{
 			FAgent& agent = agentsResourceArray[i];
 
