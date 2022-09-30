@@ -20,6 +20,14 @@ FVector2Float::FVector2Float() : X(0), Y(0)
 {
 }
 
+FVector3Float::FVector3Float(const float X, const float Y, const float Z) : X(X), Y(Y), Z(Z)
+{
+}
+
+FVector3Float::FVector3Float() : X(0), Y(0), Z(0)
+{
+}
+
 FVector4Float::FVector4Float(const float X, const float Y, const float Z, const float W) : X(X), Y(Y), Z(Z), W(W)
 {
 }

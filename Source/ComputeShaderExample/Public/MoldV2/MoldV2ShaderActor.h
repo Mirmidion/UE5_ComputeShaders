@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "MoldV2ShaderComponent.h"
-#include "MoldV2TextureComponent.h"
 #include "GameFramework/Actor.h"
 #include "MoldV2ShaderActor.generated.h"
 

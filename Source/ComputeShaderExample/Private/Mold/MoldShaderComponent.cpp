@@ -117,6 +117,63 @@ void UMoldShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHIComma
 	}
 }
 
+void UMoldShaderComponent::DoUpdate() {
+	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
+		[&](FRHICommandListImmediate& RHICommands)
+		{
+			CheckRenderBuffers(RHICommands);
+
+			TShaderMapRef<FMoldShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+
+			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+
+			RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
+			RHICommands.SetUAVParameter(rhiComputeShader, cs->trailmap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numAgents.GetBaseIndex(), sizeof(UINT), &amountOfAgents);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->height.GetBaseIndex(), sizeof(int), &height);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->moveSpeed.GetBaseIndex(), sizeof(float), &speed);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Time.GetBaseIndex(), sizeof(float), &Time);
+
+			RHICommands.SetComputeShader(rhiComputeShader);
+
+			if (Time > 3)
+				DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
+
+			{
+				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, BufferShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+			}
+		});
+}
+
+void UMoldShaderComponent::DoDiffuse() {
+	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
+		[&](FRHICommandListImmediate& RHICommands)
+		{
+			CheckRenderBuffers(RHICommands);
+
+			TShaderMapRef<FOldDiffuseShaderDeclaration> cs2(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+
+			FRHIComputeShader* rhiComputeShader2 = cs2.GetComputeShader();
+
+			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->trailmap.GetBaseIndex(), BufferShaderOutput->GetRenderTargetItem().UAV);
+			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->width.GetBaseIndex(), sizeof(int), &width);
+			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->height.GetBaseIndex(), sizeof(int), &height);
+			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
+			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->decayRate.GetBaseIndex(), sizeof(float), &decayRate);
+			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->diffuseRate.GetBaseIndex(), sizeof(float), &diffuseRate);
+			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->DiffusedTrailMap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
+
+			RHICommands.SetComputeShader(rhiComputeShader2);
+
+			DispatchComputeShader(RHICommands, cs2, width, height, 1);
+
+			{
+				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+			}
+		});
+}
 
 // Called every frame
 void UMoldShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -128,94 +185,8 @@ void UMoldShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		Delta = DeltaTime;
 		Time += Delta;
 			
-		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
-			[&](FRHICommandListImmediate& RHICommands)
-			{
-				CheckRenderBuffers(RHICommands);
-				
-				TShaderMapRef<FMoldShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-
-				FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-
-				RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
-				RHICommands.SetUAVParameter(rhiComputeShader, cs->trailmap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numAgents.GetBaseIndex(), sizeof(UINT), &amountOfAgents);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->height.GetBaseIndex(), sizeof(int), &height);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->moveSpeed.GetBaseIndex(), sizeof(float), &speed);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Time.GetBaseIndex(), sizeof(float), &Time);
-
-				RHICommands.SetComputeShader(rhiComputeShader);
-
-				if (Time > 3)
-					DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
-
-				{
-					RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, BufferShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
-				}
-				// read back the data
-				/*{
-					TResourceArray<FAgent> agentsResourceArray;
-					agentsResourceArray.SetAllowCPUAccess(true);
-					agentsResourceArray.Init(FAgent(), amountOfAgents);
-					uint8* data = (uint8*)RHILockBuffer(_agentsBuffer, 0, amountOfAgents * sizeof(FAgent), RLM_ReadOnly);
-					FMemory::Memcpy(agentsResourceArray.GetData(), data, amountOfAgents * sizeof(FAgent));
-
-					RHIUnlockBuffer(_agentsBuffer);
-					if (agentsResourceArray.GetAllowCPUAccess())
-					{
-						FString ToPrint = FString("Delta: ").Append(FString::SanitizeFloat(Delta)).Append(" speed: ").Append(FString::SanitizeFloat(speed));
-						ToPrint = ToPrint.Append(" height: ").Append(FString::FromInt(height));
-						ToPrint = ToPrint.Append(" width: ").Append(FString::FromInt(width));
-						ToPrint = ToPrint.Append(" num agents: ").Append(FString::FromInt(amountOfAgents));
-						ToPrint = ToPrint.Append(" agent1angle: ").Append(FString::SanitizeFloat(agentsResourceArray[0].angle));
-						UE_LOG(LogTemp, Log, TEXT("%s"), *agentsResourceArray[0].position.ToString());
-						UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-
-					}
-
-					if (Paused)
-					{
-						for (int32 Index = 0; Index < agentsResourceArray.Num(); Index++)
-						{
-							FAgent& agent = agentsResourceArray[Index];
-							FString ToPrint = FString("agent position: ").Append(agent.position.ToString());
-							ToPrint = ToPrint.Append(" agent angle: ").Append(FString::SanitizeFloat(agent.angle));
-							UE_LOG(LogTemp, Log, TEXT("%d"), Index);
-							UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-						}
-						Paused = false;
-					}
-				}*/
-			});
-	
-		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
-			[&](FRHICommandListImmediate& RHICommands)
-			{
-
-				CheckRenderBuffers(RHICommands);
-
-				TShaderMapRef<FOldDiffuseShaderDeclaration> cs2(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-
-				FRHIComputeShader* rhiComputeShader2 = cs2.GetComputeShader();
-
-				RHICommands.SetUAVParameter(rhiComputeShader2, cs2->trailmap.GetBaseIndex(), BufferShaderOutput->GetRenderTargetItem().UAV);
-				RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->width.GetBaseIndex(), sizeof(int), &width);
-				RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->height.GetBaseIndex(), sizeof(int), &height);
-				RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
-				RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->decayRate.GetBaseIndex(), sizeof(float), &decayRate);
-				RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->diffuseRate.GetBaseIndex(), sizeof(float), &diffuseRate);
-				RHICommands.SetUAVParameter(rhiComputeShader2, cs2->DiffusedTrailMap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-
-				RHICommands.SetComputeShader(rhiComputeShader2);
-
-				DispatchComputeShader(RHICommands, cs2, width, height, 1);
-
-				{
-					RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
-				}
-			});
+		DoUpdate();
+		DoDiffuse();
 	}
 }
 

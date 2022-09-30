@@ -24,9 +24,16 @@ UMoldV2ShaderComponent::UMoldV2ShaderComponent()
 void UMoldV2ShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
 	
-	//RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), TEXTURE_WIDTH, TEXTURE_HEIGHT, ETextureRenderTargetFormat::RTF_RGBA8);
+	FSpeciesSettings Data;
+	Data.colour = FVector4Float(1,0,0,1);
+	Data.moveSpeed = 100;
+	Data.sensorAngleDegrees = 45;
+	Data.sensorOffsetDst = 75;
+	Data.sensorSize = 10;
+	Data.turnSpeed = 10;
+	Species.Add(Data);
+
 	Reset();
 }
 
@@ -100,11 +107,6 @@ void UMoldV2ShaderComponent::Reset()
 			Agent.angle = Angle;
 			Agent.speciesIndex = speciesIndex;
 			Agent.speciesMask = SpeciesMask;
-
-			//UE_LOG(LogTemp, Log, TEXT("Position: %s"), *Agent.position.ToString())
-			//UE_LOG(LogTemp, Log, TEXT("Angle: %s"), *FString::SanitizeFloat(Agent.angle))
-			//UE_LOG(LogTemp, Log, TEXT("Index: %d"), Agent.speciesIndex)
-			//UE_LOG(LogTemp, Log, TEXT("Mask: %s"), *Agent.speciesMask.ToString())
 		}
 
 		FRHIResourceCreateInfo createInfo{ *FString("") };
@@ -124,7 +126,7 @@ void UMoldV2ShaderComponent::Reset()
 		_speciesBuffer = RHICreateStructuredBuffer(sizeof(FSpeciesSettings), sizeof(FSpeciesSettings) * NumSpecies, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
 		_speciesBufferUAV = RHICreateUnorderedAccessView(_speciesBuffer, false, false);
 	}
-	//return;
+	return;
 
 	DiffuseTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	DiffuseTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
@@ -157,14 +159,7 @@ void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICom
 	}
 }
 
-
-// Called every frame
-void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	Delta = DeltaTime;
-	Time += Delta;
-
+void UMoldV2ShaderComponent::DoUpdate() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
@@ -192,56 +187,24 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 				RHICommands.SetComputeShader(rhiComputeShader);
 
-				if (Time > 3)
-				DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
+				if (Time > 3 )
+					DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
 
 				{
 					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
 					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}
-
-				/*{
-					TResourceArray<FAgentV2> agentsResourceArray;
-					agentsResourceArray.SetAllowCPUAccess(true);
-					agentsResourceArray.Init(FAgentV2(), amountOfAgents);
-					uint8* data = (uint8*)RHILockBuffer(_agentsBuffer, 0, amountOfAgents * sizeof(FAgentV2), RLM_ReadOnly);
-					FMemory::Memcpy(agentsResourceArray.GetData(), data, amountOfAgents * sizeof(FAgentV2));
-
-					RHIUnlockBuffer(_agentsBuffer);
-					if (agentsResourceArray.GetAllowCPUAccess())
-					{
-						FString ToPrint = FString("Delta: ").Append(FString::SanitizeFloat(Delta)).Append(" speed: ").Append(FString::SanitizeFloat(speed));
-						ToPrint = ToPrint.Append(" height: ").Append(FString::FromInt(height));
-						ToPrint = ToPrint.Append(" width: ").Append(FString::FromInt(width));
-						ToPrint = ToPrint.Append(" num agents: ").Append(FString::FromInt(amountOfAgents));
-						ToPrint = ToPrint.Append(" agent1angle: ").Append(FString::SanitizeFloat(agentsResourceArray[6].angle));
-						UE_LOG(LogTemp, Log, TEXT("%s"), *agentsResourceArray[6].position.ToString());
-						UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-
-					}
-
-					if (Paused)
-					{
-						for (int32 Index = 0; Index < agentsResourceArray.Num(); Index++)
-						{
-							FAgentV2& agent = agentsResourceArray[Index];
-							FString ToPrint = FString("agent position: ").Append(agent.position.ToString());
-							ToPrint = ToPrint.Append(" agent angle: ").Append(FString::SanitizeFloat(agent.angle));
-							UE_LOG(LogTemp, Log, TEXT("%d"), Index);
-							UE_LOG(LogTemp, Log, TEXT("%s"), *ToPrint);
-						}
-						Paused = false;
-					}
-				}*/
 			}
 		});
-	
-		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
+}
+
+void UMoldV2ShaderComponent::DoDiffuse() {
+	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-				CheckRenderBuffers(RHICommands);
+			CheckRenderBuffers(RHICommands);
 
-				{
+			{
 				TShaderMapRef<FDiffuseShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
 				FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
@@ -267,8 +230,10 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				}
 			}
 		});
-		return;
-		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
+}
+
+void UMoldV2ShaderComponent::DoColorMapping() {
+	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
@@ -295,5 +260,24 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				}
 			}
 		});
+}
+
+// Called every frame
+void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (Paused)
+		return;
+
+	Delta = DeltaTime;
+	Time += Delta;
+
+	for (int i = 0; i < StepsPerFrame; i++) {
+		DoUpdate();
+		DoDiffuse();
+		continue;
+		DoColorMapping();
+	}
 }
 

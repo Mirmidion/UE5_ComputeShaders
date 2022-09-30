@@ -49,12 +49,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		int height = 1080;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int amountOfAgents = 100;
+		int amountOfAgents = 10000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		SpawnMode spawnMode;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Trail Settings")
-		float trailWeight = 1;
+		float trailWeight = 10;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings")
 		float decayRate = 1;
@@ -62,8 +62,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings")
 		float diffuseRate = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings")
-		TArray<FSpeciesSettings> Species = {FSpeciesSettings()};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings", Meta=(ExposeOnSpawn = true))
+		TArray<FSpeciesSettings> Species;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool Running = true;
@@ -79,7 +79,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		UTextureRenderTarget2D* DisplayTarget;
 
-	bool Paused = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		bool Paused = false;
 
 protected:
 	FBufferRHIRef _agentsBuffer;
@@ -88,6 +89,9 @@ protected:
 	FBufferRHIRef _speciesBuffer;
 	FUnorderedAccessViewRHIRef _speciesBufferUAV;
 
+	void DoUpdate();
+	void DoDiffuse();
+	void DoColorMapping();
 	float Delta;
 	float Time;
 	int NumSpecies;

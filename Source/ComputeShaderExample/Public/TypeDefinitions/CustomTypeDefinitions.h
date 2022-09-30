@@ -96,6 +96,39 @@ struct TShaderParameterTypeInfo<FVector2Float>
 };
 
 USTRUCT(BlueprintType)
+struct FVector3Float
+{
+	GENERATED_USTRUCT_BODY()
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float X;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float Y;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float Z;
+
+public:
+	FVector3Float(const float X, const float Y, const float Z);
+	FVector3Float();
+};
+
+template<>
+struct TShaderParameterTypeInfo<FVector3Float>
+{
+	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
+	static constexpr int32 NumRows = 1;
+	static constexpr int32 NumColumns = 3;
+	static constexpr int32 NumElements = 0;
+	static constexpr int32 Alignment = alignof(FVector3Float);
+	static constexpr bool bIsStoredInConstantBuffer = true;
+
+	using TAlignedType = TAlignedTypedef<FVector3Float, Alignment>::Type;
+
+	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
+};
+
+
+USTRUCT(BlueprintType)
 struct FVector4Float
 {
 	GENERATED_USTRUCT_BODY()
@@ -134,7 +167,7 @@ struct FAgentV2
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		FVector2Float position;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float angle;

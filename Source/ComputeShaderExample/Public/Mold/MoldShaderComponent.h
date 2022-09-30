@@ -35,6 +35,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void Reset();
 
+	void DoUpdate();
+	void DoDiffuse();
+
 	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")

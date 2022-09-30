@@ -2,8 +2,7 @@
 //#pragma kernel Diffuse
 
 RWTexture2D<float4> noisemap;
-float2 start;
-float posY;
+float3 start;
 int2 dimensions;
 float offset;
 int octaves;
@@ -368,9 +367,9 @@ void GenerateNoise (uint3 id : SV_DispatchThreadID)
 	}
 	float val = 0;
 	float amplitude = 0.5f;
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < octaves; i++)
 	{
-		float tempVal = snoise(float2(start.x + id.x * offset * 0.001f,posY + id.y * offset * 0.001f) * pow(2,i));
+		float tempVal = snoise(float3(start.x + id.x * offset * 0.001f,start.y + id.y * offset * 0.001f, start.z) * pow(2,i));
 		val += amplitude * ((tempVal + 1) / 2.f);
 		amplitude *= 0.5f;
 	}

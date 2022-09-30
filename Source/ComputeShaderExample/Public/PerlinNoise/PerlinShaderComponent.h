@@ -33,14 +33,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void Reset();
 
+	void Generate();
+
 	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		FVector2D Position;
+		FVector3Float Position;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		float posY;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		float Offset = 50;
+		float Offset = 10;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
 		int Octaves = 4;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
@@ -57,4 +57,5 @@ protected:
 
 	float Delta;
 	float Time;
+	FVector2f Start;
 };

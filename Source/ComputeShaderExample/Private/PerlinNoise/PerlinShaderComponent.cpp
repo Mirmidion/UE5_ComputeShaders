@@ -56,24 +56,18 @@ void UPerlinShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICom
 	}
 }
 
-
-// Called every frame
-void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
+void UPerlinShaderComponent::Generate() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
-			
+
 			TShaderMapRef<FPerlinShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-			
+
 			RHICommands.SetUAVParameter(rhiComputeShader, cs->texture.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(FVector2D), &Position);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(float), &posY);
+			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(FVector3Float), &Position);
 			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->dimensions.GetBaseIndex(), sizeof(FIntVector2d), &Dimensions);
 			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->offset.GetBaseIndex(), sizeof(float), &Offset);
 			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->octaves.GetBaseIndex(), sizeof(int), &Octaves);
@@ -86,5 +80,13 @@ void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 			}
 		});
+}
+
+
+// Called every frame
+void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	Generate();
 }
 
