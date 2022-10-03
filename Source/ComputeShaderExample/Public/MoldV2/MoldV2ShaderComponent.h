@@ -10,7 +10,7 @@
 #include "MoldV2ShaderComponent.generated.h"
 
 UENUM(BlueprintType)
-enum class SpawnMode : uint8
+enum class ESpawnMode : uint8
 {
 	Random,
 	Point,
@@ -51,7 +51,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		int amountOfAgents = 10000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		SpawnMode spawnMode;
+		ESpawnMode spawnMode;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Trail Settings")
 		float trailWeight = 10;

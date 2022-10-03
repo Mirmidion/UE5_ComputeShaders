@@ -25,10 +25,7 @@ void UMoldShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
-	//RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), TEXTURE_WIDTH, TEXTURE_HEIGHT, ETextureRenderTargetFormat::RTF_RGBA8);
 	Reset();
-	
 }
 
 void UMoldShaderComponent::Reset()
@@ -94,6 +91,9 @@ void UMoldShaderComponent::Reset()
 
 	Time = 0;
 
+	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
+	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+
 	BufferRenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	BufferRenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 }
@@ -153,11 +153,11 @@ void UMoldShaderComponent::DoDiffuse() {
 		{
 			CheckRenderBuffers(RHICommands);
 
-			TShaderMapRef<FOldDiffuseShaderDeclaration> cs2(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			TShaderMapRef<FDiffuseShaderDeclaration> cs2(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
 			FRHIComputeShader* rhiComputeShader2 = cs2.GetComputeShader();
 
-			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->trailmap.GetBaseIndex(), BufferShaderOutput->GetRenderTargetItem().UAV);
+			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->TrailMap.GetBaseIndex(), BufferShaderOutput->GetRenderTargetItem().UAV);
 			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->width.GetBaseIndex(), sizeof(int), &width);
 			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->height.GetBaseIndex(), sizeof(int), &height);
 			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->deltaTime.GetBaseIndex(), sizeof(float), &Delta);

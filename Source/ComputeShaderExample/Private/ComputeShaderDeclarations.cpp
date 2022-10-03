@@ -49,31 +49,6 @@ void FMoldShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPer
 
 IMPLEMENT_SHADER_TYPE(, FMoldShaderDeclaration, TEXT("/ComputeShaderPlugin/Mold.usf"), TEXT("MainComputeShader"), SF_Compute);
 
-
-FOldDiffuseShaderDeclaration::FOldDiffuseShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
-{
-	trailmap.Bind(Initializer.ParameterMap, TEXT("trailmap"));
-	width.Bind(Initializer.ParameterMap, TEXT("width"));
-	height.Bind(Initializer.ParameterMap, TEXT("height"));
-	deltaTime.Bind(Initializer.ParameterMap, TEXT("deltaTime"));
-	decayRate.Bind(Initializer.ParameterMap, TEXT("decayRate"));
-	diffuseRate.Bind(Initializer.ParameterMap, TEXT("diffuseRate"));
-	DiffusedTrailMap.Bind(Initializer.ParameterMap, TEXT("DiffusedTrailMap"));
-}
-
-
-
-void FOldDiffuseShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-{
-	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
-	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
-	OutEnvironment.SetDefine(TEXT("TEXTURE_WIDTH"), TEXTURE_WIDTH);
-	OutEnvironment.SetDefine(TEXT("TEXTRE_HEIGHT"), TEXTURE_HEIGHT);
-}
-
-IMPLEMENT_SHADER_TYPE(, FOldDiffuseShaderDeclaration, TEXT("/ComputeShaderPlugin/DiffuseCS.usf"), TEXT("Diffuse"), SF_Compute);
-
 FUpdateShaderDeclaration::FUpdateShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
 {
 	speciesSettings.Bind(Initializer.ParameterMap, TEXT("speciesSettings"));

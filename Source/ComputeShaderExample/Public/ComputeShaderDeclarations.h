@@ -68,33 +68,6 @@ public:
 	LAYOUT_FIELD(FShaderResourceParameter, Time);
 };
 
-class FOldDiffuseShaderDeclaration : public FComputeShaderDeclaration
-{
-
-	DECLARE_SHADER_TYPE(FOldDiffuseShaderDeclaration, Global);
-
-	FOldDiffuseShaderDeclaration() {}
-
-	explicit FOldDiffuseShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
-		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
-	};
-
-	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-
-public:
-
-	LAYOUT_FIELD(FShaderResourceParameter, trailmap,0);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
-	LAYOUT_FIELD(FShaderResourceParameter, decayRate);
-	LAYOUT_FIELD(FShaderResourceParameter, diffuseRate);
-	LAYOUT_FIELD(FShaderResourceParameter, DiffusedTrailMap, 1);
-};
-
 class FUpdateShaderDeclaration : public FComputeShaderDeclaration
 {
 

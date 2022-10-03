@@ -126,7 +126,11 @@ void UMoldV2ShaderComponent::Reset()
 		_speciesBuffer = RHICreateStructuredBuffer(sizeof(FSpeciesSettings), sizeof(FSpeciesSettings) * NumSpecies, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
 		_speciesBufferUAV = RHICreateUnorderedAccessView(_speciesBuffer, false, false);
 	}
-	return;
+
+	Time = 0;
+
+	DisplayTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
+	DisplayTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 
 	DiffuseTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	DiffuseTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
@@ -224,7 +228,7 @@ void UMoldV2ShaderComponent::DoDiffuse() {
 				DispatchComputeShader(RHICommands, cs, width, height, 1);
 
 				{
-					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DisplayTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 					RHICommands.CopyTexture(DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, DiffuseTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 					RHICommands.CopyTexture(TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 				}
@@ -243,7 +247,7 @@ void UMoldV2ShaderComponent::DoColorMapping() {
 				FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 
 				RHICommands.SetUAVParameter(rhiComputeShader, cs->speciesSettings.GetBaseIndex(), _speciesBufferUAV);
-				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numSpecies.GetBaseIndex(), sizeof(int), &NumSpecies);
+				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numSpecies.GetBaseIndex(), sizeof(UINT), &NumSpecies);
 
 				RHICommands.SetUAVParameter(rhiComputeShader, cs->TrailMap.GetBaseIndex(), TrailMapOutput->GetRenderTargetItem().UAV);
 				RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
@@ -276,7 +280,7 @@ void UMoldV2ShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	for (int i = 0; i < StepsPerFrame; i++) {
 		DoUpdate();
 		DoDiffuse();
-		continue;
+		//continue;
 		DoColorMapping();
 	}
 }

@@ -69,7 +69,7 @@ struct FVector2Float
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float X;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float Y;
@@ -100,7 +100,7 @@ struct FVector3Float
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float X;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float Y;
@@ -133,14 +133,14 @@ struct FVector4Float
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int X;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int Y;
+		float X;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int Z;
+		float Y;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int W;
+		float Z;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float W;
 
 public:
 	FVector4Float(const float X, const float Y, const float Z, const float W);

@@ -43,6 +43,9 @@ void UPerlinShaderComponent::Reset()
 {
 	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
 	Time = 0;
+
+	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Dimensions.X, Dimensions.Y, RTF_RGBA8);
+	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 }
 
 void UPerlinShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)

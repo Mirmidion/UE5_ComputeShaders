@@ -1,5 +1,4 @@
 #include "/Engine/Public/Platform.ush"
-//#pragma kernel Diffuse
 
 RWTexture2D<float4> TrailMap;
 int width;
