@@ -138,3 +138,43 @@ void FPerlinShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderP
 
 IMPLEMENT_SHADER_TYPE(, FPerlinShaderDeclaration, TEXT("/ComputeShaderPlugin/PerlinNoise.usf"), TEXT("GenerateNoise"), SF_Compute);
 
+
+FLinesShaderDeclaration::FLinesShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
+{
+	agents.Bind(Initializer.ParameterMap, TEXT("agents"));
+	trailmap.Bind(Initializer.ParameterMap, TEXT("trailmap"));
+	numAgents.Bind(Initializer.ParameterMap, TEXT("numAgents"));
+	width.Bind(Initializer.ParameterMap, TEXT("width"));
+	height.Bind(Initializer.ParameterMap, TEXT("height"));
+	deltaTime.Bind(Initializer.ParameterMap, TEXT("deltaTime"));
+	Time.Bind(Initializer.ParameterMap, TEXT("Time"));
+}
+
+void FLinesShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FLinesShaderDeclaration, TEXT("/ComputeShaderPlugin/RandomLines.usf"), TEXT("MainComputeShader"), SF_Compute);
+
+FMandelbrotShaderDeclaration::FMandelbrotShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
+{
+	trailmap.Bind(Initializer.ParameterMap, TEXT("trailmap"));
+	width.Bind(Initializer.ParameterMap, TEXT("width"));
+	height.Bind(Initializer.ParameterMap, TEXT("height"));
+	center.Bind(Initializer.ParameterMap, TEXT("center"));
+	zoom.Bind(Initializer.ParameterMap, TEXT("zoom"));
+	iterations.Bind(Initializer.ParameterMap, TEXT("iterations"));
+	mode.Bind(Initializer.ParameterMap, TEXT("mode"));
+}
+
+void FMandelbrotShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FMandelbrotShaderDeclaration, TEXT("/ComputeShaderPlugin/MandelbrotSet.usf"), TEXT("MainComputeShader"), SF_Compute);

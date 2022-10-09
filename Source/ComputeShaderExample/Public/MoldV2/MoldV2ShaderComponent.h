@@ -28,6 +28,7 @@ class COMPUTESHADEREXAMPLE_API UMoldV2ShaderComponent : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UMoldV2ShaderComponent();
+	virtual ~UMoldV2ShaderComponent() override;
 
 protected:
 	// Called when the game starts
@@ -37,7 +38,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands, bool bForceUpdate);
 
 	UFUNCTION(BlueprintCallable)
 		void Reset();
@@ -45,9 +46,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		int StepsPerFrame = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int width = 1920;
+		int width = TEXTURE_WIDTH;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int height = 1080;
+		int height = TEXTURE_HEIGHT;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
 		int amountOfAgents = 10000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")

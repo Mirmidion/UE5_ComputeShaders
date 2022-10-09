@@ -177,3 +177,53 @@ public:
 	LAYOUT_FIELD(FShaderResourceParameter, offset);
 	LAYOUT_FIELD(FShaderResourceParameter, octaves);
 };
+
+class FLinesShaderDeclaration : public FComputeShaderDeclaration
+{
+
+	DECLARE_SHADER_TYPE(FLinesShaderDeclaration, Global);
+
+	FLinesShaderDeclaration() {}
+
+	explicit FLinesShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+	LAYOUT_FIELD(FShaderResourceParameter, agents);
+	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
+	LAYOUT_FIELD(FShaderResourceParameter, numAgents);
+	LAYOUT_FIELD(FShaderResourceParameter, width);
+	LAYOUT_FIELD(FShaderResourceParameter, height);
+	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
+	LAYOUT_FIELD(FShaderResourceParameter, Time);
+};
+
+class FMandelbrotShaderDeclaration : public FComputeShaderDeclaration
+{
+
+	DECLARE_SHADER_TYPE(FMandelbrotShaderDeclaration, Global);
+
+	FMandelbrotShaderDeclaration() {}
+
+	explicit FMandelbrotShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
+	LAYOUT_FIELD(FShaderResourceParameter, width);
+	LAYOUT_FIELD(FShaderResourceParameter, height);
+	LAYOUT_FIELD(FShaderResourceParameter, center);
+	LAYOUT_FIELD(FShaderResourceParameter, zoom);
+	LAYOUT_FIELD(FShaderResourceParameter, iterations);
+	LAYOUT_FIELD(FShaderResourceParameter, mode);
+};

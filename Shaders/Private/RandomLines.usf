@@ -1,0 +1,123 @@
+#include "/Engine/Public/Platform.ush"
+
+RWStructuredBuffer<float2> agents;
+RWTexture2D<float4> trailmap;
+uint numAgents;
+int width;
+int height;
+float deltaTime;
+float Time;
+
+uint hash(uint state)
+{
+    state ^= 2747636419u;
+    state *= 2654435769u;
+    state ^= state >> 16;
+    state *= 2654435769u;
+    state ^= state >> 16;
+    state *= 2654435769u;
+    return state;
+}
+
+float nrand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float scaleToRange01(uint state)
+{
+    return state / 4294967295.0;
+}
+
+[numthreads(1, 1, 1)]
+void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+{   
+	if (ThreadId.x >= numAgents) {return;}
+
+    float2 agent = agents[ThreadId.x];
+	trailmap[int2(agent.x, agent.y)] = 1;
+
+    bool validSides[4] = {false,false,false,false};
+
+    const int2 sides[] = {int2(0,-1),int2(1,0),int2(0,1),int2(-1,0)};
+
+    for (int offset = 0; offset < 4; offset++)
+    {
+	    int2 source = int2(agent.x, agent.y) + sides[offset];
+	    int2 source2 = int2(agent.x, agent.y) + sides[offset]*2;
+        float total = 0;
+
+        //for (int i = 0; i < 4; i++)
+        //{
+        int2 toCheck = source;
+        if (toCheck.x >= 0 && toCheck.x < width && toCheck.y >= 0 && toCheck.y < height)
+			total += trailmap[toCheck].x;
+        else
+			total += 1;
+        //}
+
+        int2 toCheck2 = source2;
+        if (toCheck2.x >= 0 && toCheck2.x < width && toCheck2.y >= 0 && toCheck2.y < height)
+			total += trailmap[toCheck2].x;
+        else
+			total += 1;
+
+        if (total < 0.5f && source.x >= 0 && source.x < width && source.y >= 0 && source.y < height)
+        {
+	        validSides[offset] = true;
+        }
+    }
+
+    float ValidSidesCounter = 0;
+    for (int a = 0; a < 4; a++)
+    {
+	    if (validSides[a])
+	    {
+		    ValidSidesCounter++;
+	    }
+    }
+
+    float delta = 1.f / ValidSidesCounter;
+    uint rnd = hash(agent.y * width + agent.x + hash(ThreadId.x + Time * 100000));
+    float noise = scaleToRange01(rnd);
+
+	int index = 0;
+    bool foundNew = false;
+    float2 newPosition = float2(0,0);
+    for (int f = 0; f < 4; f++)
+    {
+	    if (validSides[f])
+	    {
+			if (noise >= delta * index && noise < delta * (index + 1))
+			{
+				trailmap[agent + sides[f]] = 1;
+				trailmap[agent + sides[f]*2] = 1;
+				newPosition = agent + sides[f] * 2;
+                foundNew = true;
+                break;
+			}
+            index++;
+	    }
+    }
+
+    if (foundNew)
+    {
+	    agents[ThreadId.x] = newPosition;
+        return;
+    }
+    
+    int2 ValidPos = agents[ThreadId.x];
+    bool found = false;
+    for (int y = 0; y*2 < height && !found; y++)
+    {
+        for (int x = 0; x*2 < width && !found; x++)
+        {
+	        if (trailmap[int2(x*2, y*2)].x < 0.5f)
+	        {
+		        found = true;
+                ValidPos = int2(x*2, y*2);
+	        }
+        }
+    }
+	agents[ThreadId.x] = ValidPos;
+}

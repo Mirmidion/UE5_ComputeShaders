@@ -19,6 +19,11 @@ UMoldV2ShaderComponent::UMoldV2ShaderComponent()
 	// ...
 }
 
+UMoldV2ShaderComponent::~UMoldV2ShaderComponent()
+{
+
+}
+
 
 // Called when the game starts
 void UMoldV2ShaderComponent::BeginPlay()
@@ -59,19 +64,19 @@ void UMoldV2ShaderComponent::Reset()
 
 			switch(spawnMode)
 			{
-			case SpawnMode::Random:
+			case ESpawnMode::Random:
 			{
 				Position = FVector2Float(rng.FRandRange(0, width), rng.FRandRange(0, height));
 				Angle = RandomAngle;
 				break;
 			}
-			case SpawnMode::Point:
+			case ESpawnMode::Point:
 			{
 				Position = FVector2Float(Center.X, Center.Y);
 				Angle = RandomAngle;
 				break;
 			}
-			case SpawnMode::InwardCircle:
+			case ESpawnMode::InwardCircle:
 				{
 					FVector2f Value = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.5f;
 					Position = FVector2Float(Value.X, Value.Y);
@@ -80,7 +85,7 @@ void UMoldV2ShaderComponent::Reset()
 					Angle = FMath::Atan2(Normalized.Y, Normalized.X);
 					break;
 				}
-			case SpawnMode::RandomCircle:
+			case ESpawnMode::RandomCircle:
 			{
 				FVector2f Value = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.15f;
 				Position = FVector2Float(Value.X, Value.Y);
@@ -129,33 +134,36 @@ void UMoldV2ShaderComponent::Reset()
 
 	Time = 0;
 
+	DisplayTarget = nullptr;
 	DisplayTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	DisplayTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 
+	DiffuseTarget = nullptr;
 	DiffuseTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	DiffuseTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 
+	TrailTarget = nullptr;
 	TrailTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
 	TrailTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 }
 
-void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)
+void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands, bool bForceUpdate)
 {
-	if (!TrailMapOutput.IsValid())
+	if (!TrailMapOutput.IsValid() || bForceUpdate)
 	{
 		FPooledRenderTargetDesc TrailMapOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(TrailTarget->SizeX, TrailTarget->SizeY), TrailTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
 		TrailMapOutputDesc.DebugName = TEXT("TrailMap_Output_RenderTarget");
 		GRenderTargetPool.FindFreeElement(RHICommands, TrailMapOutputDesc, TrailMapOutput, TEXT("TrailMap_Output_RenderTarget"));
 	}
 
-	if (!DiffusedTrailMapOutput.IsValid())
+	if (!DiffusedTrailMapOutput.IsValid() || bForceUpdate)
 	{
 		FPooledRenderTargetDesc DiffuseOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DiffuseTarget->SizeX, DiffuseTarget->SizeY), DiffuseTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
 		DiffuseOutputDesc.DebugName = TEXT("DiffusedTrailMap_Output_RenderTarget");
 		GRenderTargetPool.FindFreeElement(RHICommands, DiffuseOutputDesc, DiffusedTrailMapOutput, TEXT("DiffusedTrailMap_Output_RenderTarget"));
 	}
 
-	if (!DisplayTrailMapOutput.IsValid())
+	if (!DisplayTrailMapOutput.IsValid() || bForceUpdate)
 	{
 		FPooledRenderTargetDesc DisplayOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DisplayTarget->SizeX, DisplayTarget->SizeY), DisplayTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
 		DisplayOutputDesc.DebugName = TEXT("DisplayTrailMap_Output_RenderTarget");
@@ -167,7 +175,7 @@ void UMoldV2ShaderComponent::DoUpdate() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-			CheckRenderBuffers(RHICommands);
+			CheckRenderBuffers(RHICommands, Time == Delta);
 
 			{
 				TShaderMapRef<FUpdateShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
@@ -206,7 +214,7 @@ void UMoldV2ShaderComponent::DoDiffuse() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-			CheckRenderBuffers(RHICommands);
+			CheckRenderBuffers(RHICommands, false);
 
 			{
 				TShaderMapRef<FDiffuseShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
@@ -240,7 +248,7 @@ void UMoldV2ShaderComponent::DoColorMapping() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
-			CheckRenderBuffers(RHICommands);
+			CheckRenderBuffers(RHICommands, false);
 			{
 				TShaderMapRef<FColorMapShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 

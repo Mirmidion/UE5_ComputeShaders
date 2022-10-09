@@ -5,13 +5,18 @@
 #include "CoreMinimal.h"
 #include "CustomTypeDefinitions.generated.h"
 
+UCLASS()
+class COMPUTESHADEREXAMPLE_API UFileShower : public UObject
+{
+	GENERATED_BODY()
+};
 
 USTRUCT()
-struct FAgent
+struct COMPUTESHADEREXAMPLE_API FAgent
 {
 	GENERATED_USTRUCT_BODY()
 
-		FVector2f position;
+	FVector2f position;
 	float angle;
 };
 
@@ -22,7 +27,7 @@ struct TShaderParameterTypeInfo<FAgent>
 	static constexpr int32 NumRows = 1;
 	static constexpr int32 NumColumns = 3;
 	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = 16;
+	static constexpr int32 Alignment = alignof(FAgent);
 	static constexpr bool bIsStoredInConstantBuffer = true;
 
 	using TAlignedType = TAlignedTypedef<FAgent, Alignment>::Type;
@@ -35,7 +40,7 @@ struct FIntVector4d
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int X;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int Y;
@@ -187,7 +192,7 @@ struct TShaderParameterTypeInfo<FAgentV2>
 	static constexpr int32 NumRows = 1;
 	static constexpr int32 NumColumns = 8;
 	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = 16;
+	static constexpr int32 Alignment = alignof(FAgentV2);
 	static constexpr bool bIsStoredInConstantBuffer = true;
 
 	using TAlignedType = TAlignedTypedef<FAgentV2, Alignment>::Type;

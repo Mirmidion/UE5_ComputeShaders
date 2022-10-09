@@ -1,0 +1,154 @@
+#include "/Engine/Public/Platform.ush"
+
+RWTexture2D<float4> trailmap;
+int width;
+int height;
+float2 center;
+float zoom;
+int iterations;
+int mode;
+
+float4 GetColor(int steps)
+{
+	//return (sin(steps/100.f)+1)/2;
+
+	float4 Color = float4(0,0,0,1);
+	int mod = steps % 100;
+	float factor = (sin(steps/100.f)+1)/2;
+	if (factor < 0.33f)
+	Color.x = 1.f * max(0,min(1,1 - factor * 0.33f));
+	else if (factor < 0.66f)
+	Color.y = 1.f * max(0,min(1,0.33f + factor * 0.33f));
+	else
+	Color.z = 1.f * max(0,min(1,factor * 0.33f));
+	return Color;
+}
+
+float4 spectral_color(float l)        // RGB <0,1> <- lambda l <400,700> [nm]
+    {
+	float t;
+	float4 c=float4(0.0,0.0,0.0,1);
+         if ((l>=0.00)&&(l<0.03)) { t=(l-0.00)/(0.03-0.00); c.r=    +(0.33*t)-(0.20*t*t); }
+    else if ((l>=0.03)&&(l<0.25)) { t=(l-0.03)/(0.25-0.03); c.r=0.14         -(0.13*t*t); }
+    else if ((l>=0.48)&&(l<0.65)) { t=(l-0.48)/(0.65-0.48); c.r=    +(1.98*t)-(     t*t); }
+    else if ((l>=0.65)&&(l<0.83)) { t=(l-0.65)/(0.83-0.65); c.r=0.98+(0.06*t)-(0.40*t*t); }
+    else if ((l>=0.83)&&(l<1.00)) { t=(l-0.83)/(1.00-0.83); c.r=0.65-(0.84*t)+(0.20*t*t); }
+         if ((l>=0.05)&&(l<0.25)) { t=(l-0.05)/(0.25-0.05); c.g=             +(0.80*t*t); }
+    else if ((l>=0.25)&&(l<0.63)) { t=(l-0.25)/(0.63-0.25); c.g=0.8 +(0.76*t)-(0.80*t*t); }
+    else if ((l>=0.61)&&(l<0.79)) { t=(l-0.61)/(0.79-0.61); c.g=0.84-(0.84*t)           ; }
+         if ((l>=0.00)&&(l<0.25)) { t=(l-0.00)/(0.25-0.00); c.b=    +(2.20*t)-(1.50*t*t); }
+    else if ((l>=0.25)&&(l<0.53)) { t=(l-0.25)/(0.53-0.25); c.b=0.7 -(     t)+(0.30*t*t); }
+
+	if (c.r == 0 && c.g == 0 && c.b == 0)
+	{
+		c = float4(0.06,0,0.05,1);	
+	}
+
+    return c;
+    }
+
+[numthreads(16, 16, 1)]
+void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+{   
+	if (ThreadId.x < 0 || ThreadId.x >= (uint)width || ThreadId.y < 0 || ThreadId.y >= (uint)height) {return;}
+	bool bOutOfBounds = false;
+
+	float2 C = center - float2((width * zoom) / 2.f,(height * zoom) / 2.f) + ThreadId.xy * zoom;
+	float2 Z = C;
+	int steps = 0;
+
+	float colorSteps = 100.f;
+	for (int i = 0; i < iterations; i++)
+	{
+		float x = Z.x, y = Z.y;
+		if (mode == 0)
+		{
+			// Formula for Z^-2
+			float D = pow(Z.x,4)+2*pow(Z.x,2)*pow(Z.y,2)+pow(Z.y,4);
+			if (D != 0)
+				Z = float2((pow(Z.x,2)-pow(Z.y,2))/D,-2*Z.x*Z.y/D) + C;
+
+			colorSteps = 5.f;
+		}
+		else if (mode == 1)
+		{
+			// Formula for Z^-1
+			float D = pow(Z.x,2)+pow(Z.y,2);
+			if (D != 0)
+				Z = float2(Z.x/D, -Z.y/D) + C;
+				//Z = float2(Z.x/0.5f*D, -Z.y/D) + C;
+				//Z = float2(Z.x/D + pow(Z.x,2) - pow(Z.y,2), -Z.y/D + 2*Z.x*Z.y) + C;
+				//Z = float2(Z.x/D + pow(Z.x, 3) - 3 * Z.x * pow(Z.y, 2), -Z.y/D + -pow(Z.y, 3) + 3 * pow(Z.x,2) * Z.y) + C;
+				//Z = float2(Z.x/D + pow(Z.x,4) + pow(Z.y,4) - 6 * pow(Z.x,2) * pow(Z.y,2), -Z.y/D + 4 * pow(Z.x,3) * y - 4 * Z.x * pow(Z.y,3)) + C;
+
+			colorSteps = 10.f;
+		}
+		else if (mode == 2)
+		{
+			// Formula of Z^2
+			Z = float2(pow(Z.x,2) - pow(Z.y,2), 2*Z.x*Z.y) + C;
+		}
+		else if (mode == 3)
+		{
+			// Formula of Z^3
+			Z = float2(pow(Z.x, 3) - 3 * Z.x * pow(Z.y, 2), -pow(Z.y, 3) + 3 * pow(Z.x,2) * Z.y) + C;
+		}
+		else if (mode == 4)
+		{
+			// Formula of Z^4
+			Z = float2(pow(Z.x,4) + pow(Z.y,4) - 6 * pow(Z.x,2) * pow(Z.y,2), 4 * pow(Z.x,3) * y - 4 * Z.x * pow(Z.y,3)) + C;
+		}
+		else if (mode == 5)
+		{
+			// ^2 and ^3
+			Z = float2(pow(Z.x, 3) - 3 * Z.x * pow(Z.y, 2) + pow(Z.x,2) - pow(Z.y,2), -pow(Z.y, 3) + 3 * pow(Z.x,2) * Z.y + 2*Z.x*Z.y) + C;
+		}
+		else if (mode == 6)
+		{
+			// ^2 and ^4
+			Z = float2(pow(Z.x,4) + pow(Z.y,4) - 6 * pow(Z.x,2) * pow(Z.y,2) + pow(Z.x,2) - pow(Z.y,2), 4 * pow(Z.x,3) * y - 4 * Z.x * pow(Z.y,3) + 2*Z.x*Z.y) + C;
+		}
+		else if (mode == 7)
+		{
+			// ^3 and ^4
+			Z = float2(pow(Z.x,4) + pow(Z.y,4) - 6 * pow(Z.x,2) * pow(Z.y,2) + pow(Z.x, 3) - 3 * Z.x * pow(Z.y, 2), 4 * pow(Z.x,3) * y - 4 * Z.x * pow(Z.y,3) -pow(Z.y, 3) + 3 * pow(Z.x,2) * Z.y) + C;
+		}
+		else if (mode == 8)
+		{
+			// ^2, ^3 and ^4
+			Z = float2(pow(Z.x,4) + pow(Z.y,4) - 6 * pow(Z.x,2) * pow(Z.y,2) + pow(Z.x, 3) - 3 * Z.x * pow(Z.y, 2) + pow(Z.x,2) - pow(Z.y,2), 4 * pow(Z.x,3) * y - 4 * Z.x * pow(Z.y,3)-pow(Z.y, 3) + 3 * pow(Z.x,2) * Z.y + 2*Z.x*Z.y) + C;
+		}
+		else if (mode == 9)
+		{
+			// Tricorn
+			Z = float2(Z.x * Z.x - Z.y*Z.y, -2*Z.x*Z.y) + C;
+		}
+		else if (mode == 10)
+		{
+			// Burning Ship
+			Z = float2(Z.x * Z.x - Z.y*Z.y, abs(2*Z.x*Z.y)) + C;
+		}
+		else if (mode == 11)
+		{
+			// Mandel diamond
+			Z = float2(pow(Z.x,2) + pow(Z.y,2), 2*Z.x*Z.y) + C;
+		}
+
+		if (pow(Z.x,2)+ pow(Z.y,2) > 4 && steps == 0)
+		{
+			steps = i;
+			bOutOfBounds = true;
+			break;
+		}
+	}
+
+	if (bOutOfBounds == true)
+	{
+		//trailmap[ThreadId.xy] = spectral_color((sin(steps/colorSteps)+1)/2);
+		trailmap[ThreadId.xy] = spectral_color(((steps+42)/colorSteps % 1));
+	}
+	else
+	{
+		trailmap[ThreadId.xy] = 0;
+	}
+}

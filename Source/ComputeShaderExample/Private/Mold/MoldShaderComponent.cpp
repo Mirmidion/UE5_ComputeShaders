@@ -50,19 +50,19 @@ void UMoldShaderComponent::Reset()
 
 			switch (spawnMode)
 			{
-			case SpawnMode::Random:
+			case ESpawnMode::Random:
 			{
 				Position = FVector2f(rng.FRandRange(0, width), rng.FRandRange(0, height));
 				Angle = RandomAngle;
 				break;
 			}
-			case SpawnMode::Point:
+			case ESpawnMode::Point:
 			{
 				Position = Center;
 				Angle = RandomAngle;
 				break;
 			}
-			case SpawnMode::InwardCircle:
+			case ESpawnMode::InwardCircle:
 			{
 				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.5f;
 				FVector2f Normalized = Center - Position;
@@ -70,7 +70,7 @@ void UMoldShaderComponent::Reset()
 				Angle = FMath::Atan2(Normalized.Y, Normalized.X);
 				break;
 			}
-			case SpawnMode::RandomCircle:
+			case ESpawnMode::RandomCircle:
 			{
 				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.15f;
 				Angle = RandomAngle;
