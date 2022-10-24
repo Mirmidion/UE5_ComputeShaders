@@ -9,13 +9,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "MoldV2/MoldV2ShaderComponent.h"
 
-FIntVector2d::FIntVector2d(const int X, const int Y) : X(X), Y(Y)
-{
-}
 
-FIntVector2d::FIntVector2d() : X(0), Y(0)
-{
-}
 
 // Sets default values for this component's properties
 UPerlinShaderComponent::UPerlinShaderComponent()

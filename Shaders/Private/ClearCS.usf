@@ -1,0 +1,15 @@
+#include "/Engine/Public/Platform.ush"
+
+int width;
+int height;
+RWTexture2D<float4> TrailMap;
+
+[numthreads(8,8,1)]
+void ClearTexture (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height) {
+		return;
+	}
+	
+	TrailMap[id.yx] = 0;
+}

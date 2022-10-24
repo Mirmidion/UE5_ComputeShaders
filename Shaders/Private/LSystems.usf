@@ -1,0 +1,32 @@
+#include "/Engine/Public/Platform.ush"
+
+struct F2DLine {
+	float2 start;
+	float2 end;
+};
+
+
+int numLines;
+float Time;
+float PercentagePerSecond;
+RWStructuredBuffer<F2DLine> lines;
+RWTexture2D<float4> trailmap;
+
+[numthreads(32, 1, 1)]
+void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+{   
+	if (ThreadId.x >= (uint)numLines) {return;}
+
+	F2DLine Line = lines[ThreadId.x];
+	//float distance = sqrt(pow(abs(Line.end.x - Line.start.x),2) + pow(abs(Line.end.y - Line.start.y),2));
+	float2 offsetFraction = (Line.end - Line.start) / 2000.f;
+	float2 currentLocation = Line.start;
+
+	//if (Time * PercentagePerSecond - (ThreadId.x*100.f)  > 0)
+	//for (int i = 0; i < min(Time * PercentagePerSecond- (ThreadId.x*100.f),100); i++)
+	for (int i = 0; i < min(Time * PercentagePerSecond*20,2000); i++)
+	{
+		trailmap[int2(round(currentLocation))] = float4(1,1,1,1);
+		currentLocation += offsetFraction;
+	}
+}

@@ -178,3 +178,37 @@ void FMandelbrotShaderDeclaration::ModifyCompilationEnvironment(const FGlobalSha
 }
 
 IMPLEMENT_SHADER_TYPE(, FMandelbrotShaderDeclaration, TEXT("/ComputeShaderPlugin/MandelbrotSet.usf"), TEXT("MainComputeShader"), SF_Compute);
+
+FLSystemShaderDeclaration::FLSystemShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
+{
+	Lines.Bind(Initializer.ParameterMap, TEXT("lines"));
+	Trailmap.Bind(Initializer.ParameterMap, TEXT("trailmap"));
+	NumLines.Bind(Initializer.ParameterMap, TEXT("numLines"));
+	Time.Bind(Initializer.ParameterMap, TEXT("Time"));
+	PercentagePerSecond.Bind(Initializer.ParameterMap, TEXT("PercentagePerSecond"));
+}
+
+void FLSystemShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FLSystemShaderDeclaration, TEXT("/ComputeShaderPlugin/LSystems.usf"), TEXT("MainComputeShader"), SF_Compute);
+
+FClearShaderDeclaration::FClearShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FComputeShaderDeclaration(Initializer)
+{
+	Trailmap.Bind(Initializer.ParameterMap, TEXT("TrailMap"));
+	Height.Bind(Initializer.ParameterMap, TEXT("width"));
+	Width.Bind(Initializer.ParameterMap, TEXT("height"));
+}
+
+void FClearShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FClearShaderDeclaration, TEXT("/ComputeShaderPlugin/ClearCS.usf"), TEXT("ClearTexture"), SF_Compute);

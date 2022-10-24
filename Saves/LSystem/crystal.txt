@@ -1,0 +1,31 @@
+{
+	"start": "F+F+F+F",
+	"iterations": 4,
+	"rules":
+	{
+		"F": "FF+F++F+F"
+	},
+	"actions":
+	{
+		"F":
+		{
+			"action": "Forward",
+			"actionValue": 40
+		},
+		"G":
+		{
+			"action": "Forward",
+			"actionValue": 40
+		},
+		"+":
+		{
+			"action": "TurnLeft",
+			"actionValue": 90
+		},
+		"-":
+		{
+			"action": "TurnRight",
+			"actionValue": 90
+		}
+	}
+}

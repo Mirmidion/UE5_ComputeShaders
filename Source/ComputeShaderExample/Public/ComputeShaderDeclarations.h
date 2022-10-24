@@ -227,3 +227,47 @@ public:
 	LAYOUT_FIELD(FShaderResourceParameter, iterations);
 	LAYOUT_FIELD(FShaderResourceParameter, mode);
 };
+
+class FLSystemShaderDeclaration : public FComputeShaderDeclaration
+{
+
+	DECLARE_SHADER_TYPE(FLSystemShaderDeclaration, Global);
+
+	FLSystemShaderDeclaration() {}
+
+	explicit FLSystemShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+	LAYOUT_FIELD(FShaderResourceParameter, Lines);
+	LAYOUT_FIELD(FShaderResourceParameter, Trailmap);
+	LAYOUT_FIELD(FShaderResourceParameter, NumLines);
+	LAYOUT_FIELD(FShaderResourceParameter, Time);
+	LAYOUT_FIELD(FShaderResourceParameter, PercentagePerSecond);
+};
+
+class FClearShaderDeclaration : public FComputeShaderDeclaration
+{
+
+	DECLARE_SHADER_TYPE(FClearShaderDeclaration, Global);
+
+	FClearShaderDeclaration() {}
+
+	explicit FClearShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+	LAYOUT_FIELD(FShaderResourceParameter, Trailmap);
+	LAYOUT_FIELD(FShaderResourceParameter, Width);
+	LAYOUT_FIELD(FShaderResourceParameter, Height);
+};

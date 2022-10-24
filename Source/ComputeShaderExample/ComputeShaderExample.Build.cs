@@ -14,8 +14,9 @@ public class ComputeShaderExample : ModuleRules
             "Engine",
             "InputCore",
             "RenderCore",
-            "RHI"
-        });
+            "RHI",
+			"Json", "JsonUtilities"
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

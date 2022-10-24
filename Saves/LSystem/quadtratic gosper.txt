@@ -1,0 +1,32 @@
+{
+	"start": "-YF",
+	"iterations": 3,
+	"rules":
+	{
+		"X": "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
+		"Y": "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY"
+	},
+	"actions":
+	{
+		"F":
+		{
+			"action": "Forward",
+			"actionValue": 40
+		},
+		"G":
+		{
+			"action": "Forward",
+			"actionValue": 40
+		},
+		"+":
+		{
+			"action": "TurnLeft",
+			"actionValue": 90
+		},
+		"-":
+		{
+			"action": "TurnRight",
+			"actionValue": 90
+		}
+	}
+}
