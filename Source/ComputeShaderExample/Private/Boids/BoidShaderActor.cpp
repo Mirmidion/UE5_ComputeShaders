@@ -19,7 +19,7 @@ ABoidShaderActor::ABoidShaderActor()
 	AddOwnedComponent(DrawComponent);
 
 	MeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(FName("MeshComponent"));
-	MeshComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+	MeshComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 
 	
 }

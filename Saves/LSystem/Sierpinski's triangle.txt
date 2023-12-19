@@ -1,6 +1,6 @@
 {
 	"start": "F-G-G",
-	"iterations": 6,
+	"iterations": 2,
 	"rules":
 	{
 		"F": "F-G+F+G-F",
@@ -10,23 +10,39 @@
 	{
 		"F":
 		{
-			"action": "Forward",
-			"actionValue": 40
+			"list": [
+				{
+					"action": "Forward",
+					"actionValue": 40
+				}
+			]
 		},
 		"G":
 		{
-			"action": "Forward",
-			"actionValue": 40
+			"list": [
+				{
+					"action": "Forward",
+					"actionValue": 40
+				}
+			]
 		},
 		"+":
 		{
-			"action": "TurnLeft",
-			"actionValue": 120
+			"list": [
+				{
+					"action": "TurnLeft",
+					"actionValue": 120
+				}
+			]
 		},
 		"-":
 		{
-			"action": "TurnRight",
-			"actionValue": 120
+			"list": [
+				{
+					"action": "TurnRight",
+					"actionValue": 120
+				}
+			]
 		}
 	}
 }

@@ -1,18 +1,31 @@
 #include "/Engine/Public/Platform.ush"
 
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+
 struct FAgent
 {
 	float2 position;
     float angle;
 };
 
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
 RWStructuredBuffer<FAgent> agents;
-RWTexture2D<float4> trailmap;
-uint numAgents;
-int width;
-int height;
-float moveSpeed;
-float deltaTime;
+RWTexture2D<float4> TrailMap;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+uint NumAgents;
+int Width;
+int Height;
+float MoveSpeed;
+float DeltaTime;
 float Time;
 
 uint hash(uint state)
@@ -37,30 +50,30 @@ float scaleToRange01(uint state)
 }
 
 [numthreads(16, 1, 1)]
-void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+void MainComputeShader(uint3 id : SV_DispatchThreadID)
 {   
-	if (ThreadId.x >= numAgents) {return;}
+	if (id.x >= NumAgents) {return;}
 
-    FAgent agent = agents[ThreadId.x];
+    const FAgent agent = agents[id.x];
 
-    float2 pos = agent.position;
-    uint random = hash(pos.y * width + pos.x + hash(ThreadId.x + Time * 100000));
+    float2 position = agent.position;
+    const uint random = hash(position.y * Width + position.x + hash(id.x + Time * 100000));
 
-    float2 direction = float2(cos(agent.angle), sin(agent.angle));
-    float2 newPos = agent.position + direction * moveSpeed * min(0.01,deltaTime);
+    const float2 direction = float2(cos(agent.angle), sin(agent.angle));
+    float2 new_position = agent.position + direction * MoveSpeed * min(0.01,DeltaTime);
 
     float value = agent.angle;
-    bool belowX = newPos.x < 0;
-    bool belowY = newPos.y < 0;
-    bool greaterX = newPos.x > width;
-    bool greaterY = newPos.y > height;
+    bool belowX = new_position.x < 0;
+    bool belowY = new_position.y < 0;
+    bool greaterX = new_position.x > Width;
+    bool greaterY = new_position.y > Height;
     //if (belowX || belowY || greaterX || greaterY){
-		newPos.x = min(width-0.1, max(0,newPos.x));
-		newPos.y = min(height-0.1, max(0,newPos.y));
+		new_position.x = min(Width-0.1, max(0,new_position.x));
+		new_position.y = min(Height-0.1, max(0,new_position.y));
         value = scaleToRange01(random) * 2 * 3.1415;
     //}
 
-    agents[ThreadId.x].position = newPos;
-    agents[ThreadId.x].angle = value;
-    trailmap[int2(newPos.x, newPos.y)] = 1;
+    agents[id.x].position = new_position;
+    agents[id.x].angle = value;
+    TrailMap[int2(new_position.x, new_position.y)] = 1;
 }

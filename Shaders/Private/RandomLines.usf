@@ -1,11 +1,20 @@
 #include "/Engine/Public/Platform.ush"
 
-RWStructuredBuffer<float2> agents;
-RWTexture2D<float4> trailmap;
-uint numAgents;
-int width;
-int height;
-float deltaTime;
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<float2> Agents;
+RWTexture2D<float4> TrailMap;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+uint NumAgents;
+int Width;
+int Height;
+float DeltaTime;
 float Time;
 
 uint hash(uint state)
@@ -32,10 +41,10 @@ float scaleToRange01(uint state)
 [numthreads(1, 1, 1)]
 void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
 {   
-	if (ThreadId.x >= numAgents) {return;}
+	if (ThreadId.x >= NumAgents) {return;}
 
-    float2 agent = agents[ThreadId.x];
-	trailmap[int2(agent.x, agent.y)] = 1;
+    float2 agent = Agents[ThreadId.x];
+	TrailMap[int2(agent.x, agent.y)] = 1;
 
     bool validSides[4] = {false,false,false,false};
 
@@ -50,19 +59,19 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
         //for (int i = 0; i < 4; i++)
         //{
         int2 toCheck = source;
-        if (toCheck.x >= 0 && toCheck.x < width && toCheck.y >= 0 && toCheck.y < height)
-			total += trailmap[toCheck].x;
+        if (toCheck.x >= 0 && toCheck.x < Width && toCheck.y >= 0 && toCheck.y < Height)
+			total += TrailMap[toCheck].x;
         else
 			total += 1;
         //}
 
         int2 toCheck2 = source2;
-        if (toCheck2.x >= 0 && toCheck2.x < width && toCheck2.y >= 0 && toCheck2.y < height)
-			total += trailmap[toCheck2].x;
+        if (toCheck2.x >= 0 && toCheck2.x < Width && toCheck2.y >= 0 && toCheck2.y < Height)
+			total += TrailMap[toCheck2].x;
         else
 			total += 1;
 
-        if (total < 0.5f && source.x >= 0 && source.x < width && source.y >= 0 && source.y < height)
+        if (total < 0.5f && source.x >= 0 && source.x < Width && source.y >= 0 && source.y < Height)
         {
 	        validSides[offset] = true;
         }
@@ -78,7 +87,7 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
     }
 
     float delta = 1.f / ValidSidesCounter;
-    uint rnd = hash(agent.y * width + agent.x + hash(ThreadId.x + Time * 100000));
+    uint rnd = hash(agent.y * Width + agent.x + hash(ThreadId.x + Time * 100000));
     float noise = scaleToRange01(rnd);
 
 	int index = 0;
@@ -90,8 +99,8 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
 	    {
 			if (noise >= delta * index && noise < delta * (index + 1))
 			{
-				trailmap[agent + sides[f]] = 1;
-				trailmap[agent + sides[f]*2] = 1;
+				TrailMap[agent + sides[f]] = 1;
+				TrailMap[agent + sides[f]*2] = 1;
 				newPosition = agent + sides[f] * 2;
                 foundNew = true;
                 break;
@@ -102,22 +111,22 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
 
     if (foundNew)
     {
-	    agents[ThreadId.x] = newPosition;
+	    Agents[ThreadId.x] = newPosition;
         return;
     }
     
-    int2 ValidPos = agents[ThreadId.x];
+    int2 ValidPos = Agents[ThreadId.x];
     bool found = false;
-    for (int y = 0; y*2 < height && !found; y++)
+    for (int y = 0; y*2 < Height && !found; y++)
     {
-        for (int x = 0; x*2 < width && !found; x++)
+        for (int x = 0; x*2 < Width && !found; x++)
         {
-	        if (trailmap[int2(x*2, y*2)].x < 0.5f)
+	        if (TrailMap[int2(x*2, y*2)].x < 0.5f)
 	        {
 		        found = true;
                 ValidPos = int2(x*2, y*2);
 	        }
         }
     }
-	agents[ThreadId.x] = ValidPos;
+	Agents[ThreadId.x] = ValidPos;
 }

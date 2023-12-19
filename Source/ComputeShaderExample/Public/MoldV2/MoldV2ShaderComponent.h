@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ComputeShaderBase.h"
 #include "ComputeShaderDeclarations.h"
+#include "StructuredBufferRW.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 #include "TypeDefinitions/CustomTypeDefinitions.h"
@@ -18,82 +20,81 @@ enum class ESpawnMode : uint8
 	RandomCircle
 };
 
-
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COMPUTESHADEREXAMPLE_API UMoldV2ShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API UMoldV2ShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UMoldV2ShaderComponent();
-	virtual ~UMoldV2ShaderComponent() override;
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
+	void GenerateAgents();
 
-public:	
-	// Called every frame
+public:
+	UFUNCTION(BlueprintCallable)
+	virtual void InitShader() override;
+	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands, bool bForceUpdate);
-
 	UFUNCTION(BlueprintCallable)
-		void Reset();
+	virtual void ClearShader() override;
+
+	virtual void UpdateShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int StepsPerFrame = 1;
+	int StepsPerFrame = 1;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int width = TEXTURE_WIDTH;
+	int Width = TEXTURE_WIDTH;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int height = TEXTURE_HEIGHT;
+	int Height = TEXTURE_HEIGHT;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		int amountOfAgents = 10000;
+	int AmountOfAgents = 10000;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings")
-		ESpawnMode spawnMode;
+	ESpawnMode SpawnMode;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Trail Settings")
-		float trailWeight = 10;
+	float TrailWeight = 10;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings")
-		float decayRate = 1;
+	float DecayRate = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings")
-		float diffuseRate = 1;
+	float DiffuseRate = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail Settings", Meta=(ExposeOnSpawn = true))
-		TArray<FSpeciesSettings> Species;
+	TArray<FSpeciesSettings> Species;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool Running = true;
-
+	UTextureRenderTarget2D* TrailTarget;
 	TRefCountPtr<IPooledRenderTarget> TrailMapOutput;
-	TRefCountPtr<IPooledRenderTarget> DiffusedTrailMapOutput;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTextureRenderTarget2D* DiffuseTarget;
 	TRefCountPtr<IPooledRenderTarget> DisplayTrailMapOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		UTextureRenderTarget2D* TrailTarget;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		UTextureRenderTarget2D* DiffuseTarget;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		UTextureRenderTarget2D* DisplayTarget;
+	UTextureRenderTarget2D* DisplayTarget;
+	TRefCountPtr<IPooledRenderTarget> DiffusedTrailMapOutput;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		bool Paused = false;
+private:
+	TStructuredBufferRW<FAgentV2> AgentsBuffer;
+	TStructuredBufferRW<FSpeciesSettings> SpeciesBuffer;
+	
+	void UpdateMold();
+	void DiffuseParticles();
+	void MapColors();
 
-protected:
-	FBufferRHIRef _agentsBuffer;
-	FUnorderedAccessViewRHIRef _agentsBufferUAV;
-
-	FBufferRHIRef _speciesBuffer;
-	FUnorderedAccessViewRHIRef _speciesBufferUAV;
-
-	void DoUpdate();
-	void DoDiffuse();
-	void DoColorMapping();
-	float Delta;
+	float CurrentDeltaTime;
 	float Time;
 	int NumSpecies;
 };

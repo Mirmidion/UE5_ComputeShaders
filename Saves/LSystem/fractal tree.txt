@@ -1,14 +1,14 @@
 {
-	"start": "-YF",
-	"iterations": 3,
+	"start": "0",
+	"iterations": 8,
 	"rules":
 	{
-		"X": "XFX-YF-YF+FX+FX-YF-YFFX+YF+FXFXYF-FX+YF+FXFX+YF-FXYF-YF-FX+FX+YFYF-",
-		"Y": "+FXFX-YF-YF+FX+FXYF+FX-YFYF-FX-YF+FXYFYF-FX-YFFX+FX+YF-YF-FX+FX+YFY"
+		"0": "1[0]0",
+		"1": "11"
 	},
 	"actions":
 	{
-		"F":
+		"0":
 		{
 			"list": [
 				{
@@ -17,7 +17,7 @@
 				}
 			]
 		},
-		"G":
+		"1":
 		{
 			"list": [
 				{
@@ -26,21 +26,29 @@
 				}
 			]
 		},
-		"+":
+		"[":
 		{
 			"list": [
+				{
+					"action": "PushPosition",
+					"actionValue": 40
+				},
 				{
 					"action": "TurnLeft",
-					"actionValue": 90
+					"actionValue": 45
 				}
 			]
 		},
-		"-":
+		"]":
 		{
 			"list": [
 				{
+					"action": "PopPosition",
+					"actionValue": 40
+				},
+				{
 					"action": "TurnRight",
-					"actionValue": 90
+					"actionValue": 45
 				}
 			]
 		}

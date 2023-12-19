@@ -1,11 +1,19 @@
 #include "/Engine/Public/Platform.ush"
-//#pragma kernel Diffuse
 
-RWTexture2D<float4> noisemap;
-float3 start;
-int2 dimensions;
-float offset;
-int octaves;
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWTexture2D<float4> NoiseMap;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+int2 Dimensions;
+float3 Start;
+float Offset;
+int Octaves;
 
 #define NOISE_SIMPLEX_1_DIV_289 0.00346020761245674740484429065744f
 
@@ -362,19 +370,19 @@ float snoise(float4 v)
 [numthreads(8,8,8)]
 void GenerateNoise (uint3 id : SV_DispatchThreadID)
 {
-	if (id.x < 0 || id.x >= (uint)dimensions.x || id.y < 0 || id.y >= (uint)dimensions.y) {
+	if (id.x < 0 || id.x >= (uint)Dimensions.x || id.y < 0 || id.y >= (uint)Dimensions.y) {
 		return;
 	}
 	float val = 0;
 	float amplitude = 0.5f;
-	for (int i = 0; i < octaves; i++)
+	for (int i = 0; i < Octaves; i++)
 	{
-		float tempVal = snoise(float3(start.x + id.x * offset * 0.001f,start.y + id.y * offset * 0.001f, start.z) * pow(2,i));
+		float tempVal = snoise(float3(Start.x + id.x * Offset * 0.001f,Start.y + id.y * Offset * 0.001f, Start.z) * pow(2,i));
 		val += amplitude * ((tempVal + 1) / 2.f);
 		amplitude *= 0.5f;
 	}
 	
-	noisemap[id.xy] = float4(val,val,val,1);
+	NoiseMap[id.xy] = float4(val,val,val,1);
 }
 
 

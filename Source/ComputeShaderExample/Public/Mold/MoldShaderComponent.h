@@ -10,70 +10,61 @@
 #include "MoldV2/MoldV2ShaderComponent.h"
 #include "MoldShaderComponent.generated.h"
 
-
-
-
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COMPUTESHADEREXAMPLE_API UMoldShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API UMoldShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UMoldShaderComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
 	UFUNCTION(BlueprintCallable)
-		void Reset();
-
-	void DoUpdate();
-	void DoDiffuse();
-
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	virtual void ClearShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void InitShader() override;
+	virtual void UpdateShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		int amountOfAgents = 1000;
+	int AmountOfAgents = 1000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		ESpawnMode spawnMode = ESpawnMode::Point;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int width = TEXTURE_WIDTH;
+	ESpawnMode SpawnMode = ESpawnMode::Point;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int height = TEXTURE_HEIGHT;
+	int Width = TEXTURE_WIDTH;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
+	int Height = TEXTURE_HEIGHT;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		float speed = 1000;
-
+	float Speed = 1000;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta = (ClampMin = 0))
-		float decayRate = .5f;
-
+	float DecayRate = .5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta=(ClampMin=0))
-		float diffuseRate = .5f;
+	float DiffuseRate = .5f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		bool Paused = false;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
+	UTextureRenderTarget2D* RenderTarget;
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
+	UTextureRenderTarget2D* BufferRenderTarget;
 	TRefCountPtr<IPooledRenderTarget> BufferShaderOutput;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* RenderTarget;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* BufferRenderTarget;
+private:
+	void UpdateMold();
+	void DiffuseParticles();
 
-protected:
-	FBufferRHIRef _agentsBuffer;
-	FUnorderedAccessViewRHIRef _agentsBufferUAV;
+	FBufferRHIRef AgentsBuffer;
+	FUnorderedAccessViewRHIRef AgentsBufferUAV;
 
-	float Delta;
+	float CurrentDeltaTime;
 	float Time;
 };

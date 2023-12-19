@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ComputeShaderBase.h"
 #include "ComputeShaderDeclarations.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
@@ -10,77 +11,114 @@
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "LSystemShaderComponent.generated.h"
 
-
+DECLARE_LOG_CATEGORY_EXTERN(LogLSystemShader, Log, All)
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class COMPUTESHADEREXAMPLE_API ULSystemShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API ULSystemShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeSerializeDone);
+
 public:
-	// Sets default values for this component's properties
 	ULSystemShaderComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
+	void CreateRenderTarget();
 
 public:
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	UFUNCTION(BlueprintCallable)
+	virtual void InitShader() override;
+	void Reset();
+	void GenerateLines();
+	void CreateLineBuffer();
+	
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void ClearShader() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
 
 	UFUNCTION(BlueprintCallable)
-		void GenerateSystem();
+	void SerializeSettings(FString Name);
 	UFUNCTION(BlueprintCallable)
-		void SerializeSettings(FString Name);
+	bool DeSerializeSettings(FString Path);
 	UFUNCTION(BlueprintCallable)
-		bool DeSerializeSettings(FString Path);
-	UFUNCTION(BlueprintCallable)
-		TArray<FString> GetAllSettings();
+	TArray<FString> GetAllSettings();
 
+	UFUNCTION(BlueprintCallable)
 	FString GetIteratedString(FString ToUse);
 
-	void DoUpdate();
-	void ClearTarget();
+	UFUNCTION(BlueprintCallable)
+	FString GetStartString() const;
+	UFUNCTION(BlueprintCallable)
+	void SetStartString(const FString& Value);
 
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	UFUNCTION(BlueprintCallable)
+	TMap<FString, FString> GetReplaceRules() const;
+	UFUNCTION(BlueprintCallable)
+	void SetReplaceRules(const TMap<FString, FString> NewRules);
+	
+	UFUNCTION(BlueprintCallable)
+	TMap<FString, FLSystemRuleList> GetCharacterActions() const;
+	UFUNCTION(BlueprintCallable)
+	void SetCharacterActions(const TMap<FString, FLSystemRuleList>& NewActions);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		int iterations = 5;
+	UFUNCTION(BlueprintCallable)
+	int GetIterations() const;
+	UFUNCTION(BlueprintCallable)
+	void SetIterations(const int Value);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int width = 3840;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int height = 2160;
+	UFUNCTION(BlueprintCallable)
+	float GetPercentagePerSecond() const;
+	UFUNCTION(BlueprintCallable)
+	void SetPercentagePerSecond(const float Value);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		FString Start = "F-G-G";
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		TMap<FString, FString> Rules = {{"F","F-G+F+G-F"}, {"G","GG"}};
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		TMap<FString, FLSystemRule> Actions = {{"F",FLSystemRule(ELSystemAction::Forward, 40)},{"G",FLSystemRule(ELSystemAction::Forward, 40)},{"+",FLSystemRule(ELSystemAction::TurnLeft, 120)},{"-",FLSystemRule(ELSystemAction::TurnRight, 120)}};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		TArray<F2DLine> Lines;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		int AmountOfLines;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		float PercentagePerSecond = 20;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		bool Paused = false;
-
-	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
+	UPROPERTY(BlueprintAssignable, Category=Events)
+	FOnDeSerializeDone OnDeSerializeDone;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* RenderTarget;
+	UTextureRenderTarget2D* RenderTarget;
+	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
+	
+private:
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Init")
+	int SystemIterations = 5;
+
+	UPROPERTY(EditAnywhere, Category = "Simulation Materials")
+	int Width = 3840;
+	UPROPERTY(EditAnywhere, Category = "Simulation Materials")
+	int Height = 2160;
+
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Runtime")
+	FString Start = "F-G-G";
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Runtime")
+	TMap<FString, FString> Rules = {{"F","F-G+F+G-F"}, {"G","GG"}};
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Runtime")
+	TMap<FString, FLSystemRuleList> Actions = {
+		{"F",FLSystemRuleList(FLSystemRule(ELSystemAction::Forward, 40))},
+		{"G",FLSystemRuleList(FLSystemRule(ELSystemAction::Forward, 40))},
+		{"+",FLSystemRuleList(FLSystemRule(ELSystemAction::TurnLeft, 120))},
+		{"-",FLSystemRuleList(FLSystemRule(ELSystemAction::TurnRight, 120))}
+	};
+
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Runtime")
+	int AmountOfLines;
+
+	UPROPERTY(EditAnywhere, Category = "Simulation Settings|Runtime")
+	float PercentagePerSecond = 20;
 
 protected:
-	FBufferRHIRef _linesBuffer;
-	FUnorderedAccessViewRHIRef _linesBufferUAV;
+	TResourceArray<F2DLine> Lines;
+	FBufferRHIRef LinesBuffer;
+	FUnorderedAccessViewRHIRef LinesBufferUAV;
 
-	float Delta;
+	float CurrentDeltaTime;
 	float Time;
 	float BufferTime;
 };

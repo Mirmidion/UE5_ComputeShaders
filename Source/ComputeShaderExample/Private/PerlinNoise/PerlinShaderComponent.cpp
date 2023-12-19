@@ -6,40 +6,39 @@
 #include "ComputeShaderDeclarations.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
+#include "RenderGraphUtils.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MoldV2/MoldV2ShaderComponent.h"
 
-
-
-// Sets default values for this component's properties
 UPerlinShaderComponent::UPerlinShaderComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
 }
 
-
-// Called when the game starts
 void UPerlinShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
-	//RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), TEXTURE_WIDTH, TEXTURE_HEIGHT, ETextureRenderTargetFormat::RTF_RGBA8);
-	Reset();
-	
+	InitShader();
 }
 
-void UPerlinShaderComponent::Reset()
+void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UpdateShader();
+}
+
+void UPerlinShaderComponent::InitShader()
+{
 	Time = 0;
 
 	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Dimensions.X, Dimensions.Y, RTF_RGBA8);
 	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+}
+
+void UPerlinShaderComponent::ClearShader()
+{
+	
 }
 
 void UPerlinShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)
@@ -53,37 +52,30 @@ void UPerlinShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICom
 	}
 }
 
-void UPerlinShaderComponent::Generate() {
+void UPerlinShaderComponent::UpdateShader() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
 
-			TShaderMapRef<FPerlinShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			const TShaderMapRef<FPerlinShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
-			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+			FPerlinShaderDeclaration::FParameters Params;
+			Params.NoiseMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
+			Params.Start = Position;
+			Params.Dimensions = Dimensions;
+			Params.Offset = Offset;
+			Params.Octaves = Octaves;
 
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->texture.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->start.GetBaseIndex(), sizeof(FVector3Float), &Position);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->dimensions.GetBaseIndex(), sizeof(FIntVector2d), &Dimensions);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->offset.GetBaseIndex(), sizeof(float), &Offset);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->octaves.GetBaseIndex(), sizeof(int), &Octaves);
+			FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(Dimensions.X, Dimensions.Y, 1));
 
-			RHICommands.SetComputeShader(rhiComputeShader);
-
-			DispatchComputeShader(RHICommands, cs, Dimensions.X, Dimensions.Y, 1);
-
-			{
-				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
-			}
+			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 		});
 }
 
-
-// Called every frame
-void UPerlinShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UPerlinShaderComponent::TogglePaused()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	Generate();
+	IComputeShaderBase::TogglePaused();
 }
+
 

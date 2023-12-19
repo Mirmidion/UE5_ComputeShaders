@@ -1,16 +1,20 @@
-//Since we can't #include private Engine shaders such as Common.ush we have to copy the needed Shaders from the Engine' Shader directory.
-//When this gets chaned in the future, we could change this to #include "/Engine/Private/Common.ush".
 #include "/Engine/Private/Common.ush"
 
 //--------------------------------------------------------------------------------------
-// Buffers
+// Structs
 //--------------------------------------------------------------------------------------
+
 struct FAgent
 {
 	float3 position;
 };
+
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
 RWStructuredBuffer<FAgent> agents;
-RWStructuredBuffer<float3> positions;         // Point Positions Input Buffer
+RWStructuredBuffer<float3> positions;
 RWStructuredBuffer<float> times;
 
 [numthreads(256, 1, 1)]

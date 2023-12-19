@@ -1,6 +1,6 @@
 {
 	"start": "F+F+F+F",
-	"iterations": 4,
+	"iterations": 2,
 	"rules":
 	{
 		"F": "FF+F++F+F"
@@ -9,23 +9,21 @@
 	{
 		"F":
 		{
-			"action": "Forward",
-			"actionValue": 40
-		},
-		"G":
-		{
-			"action": "Forward",
-			"actionValue": 40
+			"list": [
+				{
+					"action": "Forward",
+					"actionValue": 40
+				}
+			]
 		},
 		"+":
 		{
-			"action": "TurnLeft",
-			"actionValue": 90
-		},
-		"-":
-		{
-			"action": "TurnRight",
-			"actionValue": 90
+			"list": [
+				{
+					"action": "TurnLeft",
+					"actionValue": 90
+				}
+			]
 		}
 	}
 }

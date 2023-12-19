@@ -1,38 +1,49 @@
 #include "/Engine/Public/Platform.ush"
-//#pragma kernel UpdateColourMap
 
-struct SpeciesSettings {
-	float moveSpeed;
-	float turnSpeed;
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
 
-	float sensorAngleDegrees;
-	float sensorOffsetDst;
-	int sensorSize;
-	float4 colour;
+struct SpeciesSetting {
+	float move_speed;
+	float turn_speed;
+
+	float sensor_angle_degrees;
+	float sensor_offset_distance;
+	int sensor_size;
+	float4 color;
 };
 
-RWStructuredBuffer<SpeciesSettings> speciesSettings;
-uint numSpecies;
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
 
-RWTexture2D<float4> TrailMap;
-int width;
-int height;
+RWStructuredBuffer<SpeciesSetting> SpeciesSettings : register(u0);
+RWTexture2D<float4> TrailMap : register(u1);
+RWTexture2D<float4> ColorMap : register(u2);
 
-RWTexture2D<float4> ColourMap;
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+uint NumSpecies;
+int Width;
+int Height;
+
 [numthreads(8,8,1)]
-void UpdateColourMap (uint3 id : SV_DispatchThreadID)
+void UpdateColorMap (uint3 id : SV_DispatchThreadID)
 {
-	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height) {
+	if (id.x < 0 || id.x >= (uint)3840 || id.y < 0 || id.y >= (uint)2160) {
 		return;
 	}
 
-	float4 map = TrailMap[id.xy];
+	const float4 map = TrailMap[id.xy];
 
-	float4 colour = 0;
-	for (uint i = 0; i < numSpecies; i ++) {
-		float4 mask = float4(i==0, i==1, i==2,i==3);
-		colour += speciesSettings[i].colour * dot(map, mask); 
+	float4 color = 0;
+	for (uint i = 0; i < NumSpecies; i ++) {
+		const float4 mask = float4(i==0, i==1, i==2,i==3);
+		color += SpeciesSettings[i].color * dot(map, mask); 
 	}
 	
-	ColourMap[id.xy] = colour;
+	ColorMap[id.xy] = color;
 }

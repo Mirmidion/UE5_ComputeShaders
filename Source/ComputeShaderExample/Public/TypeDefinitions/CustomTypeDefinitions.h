@@ -16,8 +16,9 @@ struct COMPUTESHADEREXAMPLE_API FAgent
 {
 	GENERATED_USTRUCT_BODY()
 
-	FVector2f position;
-	float angle;
+	FVector2f Position;
+
+	float Angle;
 };
 
 template<>
@@ -41,13 +42,16 @@ struct FIntVector4d
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int X;
+	int X;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int Y;
+	int Y;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int Z;
+	int Z;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int W;
+	int W;
 
 public:
 	FIntVector4d(const int X, const int Y, const int Z, const int W);
@@ -75,10 +79,10 @@ struct FVector2Float
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float X = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Y = 0;
+	float X;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Y;
 
 public:
 	FVector2Float(const FVector2D Location);
@@ -132,11 +136,13 @@ struct FVector3Float
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float X;
+	float X;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Y;
+	float Y;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Z;
+	float Z;
 
 public:
 	FVector3Float(const float X, const float Y, const float Z);
@@ -165,13 +171,16 @@ struct FVector4Float
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float X;
+	float X;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Y;
+	float Y;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float Z;
+	float Z;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float W;
+	float W;
 
 public:
 	FVector4Float(const float X, const float Y, const float Z, const float W);
@@ -199,13 +208,16 @@ struct FAgentV2
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FVector2Float position;
+	FVector2Float Position;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float angle;
+	float Angle;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FIntVector4d speciesMask;
+	FIntVector4d SpeciesMask;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int speciesIndex;
+	int SpeciesIndex;
 
 public:
 	FAgentV2();
@@ -232,18 +244,22 @@ struct FSpeciesSettings
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float moveSpeed;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float turnSpeed;
+	float MoveSpeed;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float sensorAngleDegrees;
+	float TurnSpeed;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float sensorOffsetDst;
+	float SensorAngleDegrees;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int sensorSize;
+	float SensorOffsetDst;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FVector4Float colour;
+	int SensorSize;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector4Float Color;
 };
 
 template<>
@@ -267,9 +283,10 @@ struct FIntVector2d
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int X;
+	int X;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int Y;
+	int Y;
 
 public:
 	FIntVector2d(const int X, const int Y);
@@ -284,7 +301,7 @@ struct TShaderParameterTypeInfo<FIntVector2d>
 	static constexpr int32 NumColumns = 2;
 	static constexpr int32 NumElements = 0;
 	static constexpr int32 Alignment = alignof(FIntVector2d);
-	static constexpr bool bIsStoredInConstantBuffer = true;
+	static constexpr bool bIsStoredInConstantBuffer = false;
 
 	using TAlignedType = TAlignedTypedef<FIntVector2d, Alignment>::Type;
 
@@ -310,12 +327,25 @@ struct FLSystemRule
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		ELSystemAction Action;
+	ELSystemAction Action;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int ActionValue;
+	int ActionValue;
 
 	FLSystemRule();
 	FLSystemRule(ELSystemAction Action, int Value);
+};
+
+USTRUCT(BlueprintType)
+struct FLSystemRuleList
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FLSystemRule> List;
+
+	FLSystemRuleList();
+	FLSystemRuleList(FLSystemRule Action);
 };
 
 USTRUCT(BlueprintType)
@@ -324,29 +354,16 @@ struct F2DLine
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FVector2Float Start;
+	FVector2Float Start;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FVector2Float End;
+	FVector2Float End;
 
 	F2DLine();
 	F2DLine(const FVector2Float Start, const FVector2Float End);
 	F2DLine(const FVector2D Start, const FVector2D End);
 };
 
-template<>
-struct TShaderParameterTypeInfo<F2DLine>
-{
-	static constexpr EUniformBufferBaseType BaseType = UBMT_FLOAT32;
-	static constexpr int32 NumRows = 1;
-	static constexpr int32 NumColumns = 4;
-	static constexpr int32 NumElements = 0;
-	static constexpr int32 Alignment = alignof(F2DLine);
-	static constexpr bool bIsStoredInConstantBuffer = true;
-
-	using TAlignedType = TAlignedTypedef<F2DLine, Alignment>::Type;
-
-	static const FShaderParametersMetadata* GetStructMetadata() { return nullptr; }
-};
 
 
 

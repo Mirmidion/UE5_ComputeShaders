@@ -2,95 +2,130 @@
 
 
 #include "LSystem/LSystemShaderComponent.h"
-
 #include "ComputeShaderDeclarations.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
-#include "Kismet/KismetMathLibrary.h"
+#include "RenderGraphUtils.h"
 #include "Kismet/KismetStringLibrary.h"
 #include "Static/ComputeShaderFunctionLibrary.h"
 #include "TypeDefinitions/SerializableSettings.h"
 
-// Sets default values for this component's properties
-ULSystemShaderComponent::ULSystemShaderComponent()
-{
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+DEFINE_LOG_CATEGORY(LogLSystemShader)
 
-	// ...
+namespace LSystemConstants
+{
+	static constexpr int StartDelay = 1;
+	static constexpr int UpdatesPerTick = 10;
 }
 
+ULSystemShaderComponent::ULSystemShaderComponent()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+}
 
-// Called when the game starts
 void ULSystemShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
-	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
-	GenerateSystem();
+	
+	CreateRenderTarget();
+	
+	InitShader();
 }
 
-void ULSystemShaderComponent::GenerateSystem()
+void ULSystemShaderComponent::CreateRenderTarget()
 {
-	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
+	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Width, Height, RTF_RGBA8);
+	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+}
+
+void ULSystemShaderComponent::InitShader()
+{
+	Reset();
+	
+	GenerateLines();
+
+	CreateLineBuffer();
+	
+	ClearShader();
+}
+
+void ULSystemShaderComponent::Reset()
+{
 	Lines.Empty();
+
+	Time = 0;
+	BufferTime = 0;
+}
+
+void ULSystemShaderComponent::GenerateLines()
+{
 	TArray<FVector2D> PositionStack;
 	TArray<float> RotationStack;
 	FVector2D CurrentLocation = FVector2D(0, 0);
 	float Angle = 180;
 	
-	//UE_LOG(LogTemp, Log, TEXT("First String: %s"), *Start);
 	FString Result = GetIteratedString(Start);
-	//UE_LOG(LogTemp, Log, TEXT("Final String: %s"), *Result);
 	for (int Index = 0; Index < Result.Len(); Index++)
 	{
 		const FString character = UKismetStringLibrary::GetSubstring(Result, Index, 1);
-		const FLSystemRule Rule = Actions.FindRef(character);
+		const FLSystemRuleList Rule = Actions.FindRef(character);
 
-		//UE_LOG(LogTemp, Log, TEXT("Doing Action %s for character %s"), *UEnum::GetValueAsString(Rule.Action), *character)
 		const float AngleRadians = (Angle + 90.f) / 180.f * PI;
 		FVector2D CalculatedDirection = FVector2D(cos(AngleRadians), sin(AngleRadians));
-		//UE_LOG(LogTemp, Log, TEXT("Angle: %s"), *CalculatedDirection.ToString())
-		
-		if (Rule.Action == ELSystemAction::Back)
+		for (FLSystemRule SingleRule : Rule.List)
+		{
+			switch (SingleRule.Action)
 			{
-				const FVector2D StartOfLine = CurrentLocation;
-				CurrentLocation -= Rule.ActionValue * CalculatedDirection;
-				const FVector2D EndOfLine = CurrentLocation;
-				Lines.Add(F2DLine(StartOfLine, EndOfLine));
-			}
-		if (Rule.Action == ELSystemAction::Forward)
-			{
-				const FVector2D StartOfLine = CurrentLocation;
-				CurrentLocation += Rule.ActionValue * CalculatedDirection;
-				const FVector2D EndOfLine = CurrentLocation;
-				Lines.Add(F2DLine(StartOfLine, EndOfLine));
-			}
-			if (Rule.Action == ELSystemAction::PopPosition)
-			{
-				if (PositionStack.Num())
+			case ELSystemAction::Back:
 				{
-					CurrentLocation = PositionStack.Last();
-					PositionStack.RemoveAt(PositionStack.Num() - 1);
-					Angle = RotationStack.Last();
-					RotationStack.RemoveAt(RotationStack.Num() - 1);
+					const FVector2D StartOfLine = CurrentLocation;
+					CurrentLocation -= SingleRule.ActionValue * CalculatedDirection;
+					const FVector2D EndOfLine = CurrentLocation;
+					Lines.Add(F2DLine(StartOfLine, EndOfLine));
 				}
+				break;
+			case ELSystemAction::Forward:
+				{
+					const FVector2D StartOfLine = CurrentLocation;
+					CurrentLocation += SingleRule.ActionValue * CalculatedDirection;
+					const FVector2D EndOfLine = CurrentLocation;
+					Lines.Add(F2DLine(StartOfLine, EndOfLine));
+				}
+				break;
+			case ELSystemAction::PopPosition:
+				{
+					if (PositionStack.Num())
+					{
+						CurrentLocation = PositionStack.Last();
+						PositionStack.RemoveAt(PositionStack.Num() - 1);
+						Angle = RotationStack.Last();
+						RotationStack.RemoveAt(RotationStack.Num() - 1);
+					}
+				}
+				break;
+			case ELSystemAction::PushPosition:
+				{
+					PositionStack.Add(CurrentLocation);
+					RotationStack.Add(Angle);
+				}
+				break;
+			case ELSystemAction::TurnLeft:
+				{
+					Angle -= SingleRule.ActionValue;
+				}
+				break;
+			case ELSystemAction::TurnRight:
+				{
+					Angle += SingleRule.ActionValue;
+				}
+				break;
+			default:
+				{
+
+				}
+				break;
 			}
-			if (Rule.Action == ELSystemAction::PushPosition)
-			{
-				PositionStack.Add(CurrentLocation);
-				RotationStack.Add(Angle);
-			}
-			if (Rule.Action == ELSystemAction::TurnLeft)
-			{
-				Angle -= Rule.ActionValue;
-			}
-			if (Rule.Action == ELSystemAction::TurnRight)
-			{
-				Angle += Rule.ActionValue;
-			}
-		
+		}
 	}
 
 	{
@@ -103,8 +138,6 @@ void ULSystemShaderComponent::GenerateSystem()
 			Max = FVector2D(FMath::Max(Line.Start.X, Max.X), FMath::Max(Line.Start.Y, Max.Y));
 			Max = FVector2D(FMath::Max(Line.End.X, Max.X), FMath::Max(Line.End.Y, Max.Y));
 		}
-
-		//UE_LOG(LogTemp, Log, TEXT("Min: %s, Max: %s"), *Min.ToString(), *Max.ToString())
 
 		for (F2DLine& Line : Lines)
 		{
@@ -124,7 +157,7 @@ void ULSystemShaderComponent::GenerateSystem()
 			Max = FVector2D(FMath::Max(Line.End.X, Max.X), FMath::Max(Line.End.Y, Max.Y));
 		}
 
-		const float FactorX = width / (Max.X - Min.X), FactorY = height / (Max.Y - Min.Y);
+		const float FactorX = Width / (Max.X - Min.X), FactorY = Height / (Max.Y - Min.Y);
 		float HighestFactor = FMath::Min(FactorX, FactorY);
 		HighestFactor *= 0.8f;
 		for (F2DLine& Line : Lines)
@@ -147,7 +180,7 @@ void ULSystemShaderComponent::GenerateSystem()
 
 		float SystemWidth = Max.X - Min.X;
 		float SystemHeight = Max.Y - Min.Y;
-		FVector2Float Offset = FVector2Float((width - SystemWidth) / 2.f, (height - SystemHeight) / 2.f);
+		FVector2Float Offset = FVector2Float((Width - SystemWidth) / 2.f, (Height - SystemHeight) / 2.f);
 		for (F2DLine& Line : Lines)
 		{
 			Line.End = Line.End + Offset;
@@ -159,29 +192,56 @@ void ULSystemShaderComponent::GenerateSystem()
 		Lines.Add(F2DLine());
 
 	AmountOfLines = Lines.Num();
-
-	TResourceArray<F2DLine> BufferLines;
-	BufferLines.Append(Lines);
-	FRHIResourceCreateInfo createInfo{ *FString("") };
-	createInfo.ResourceArray = &BufferLines;
-
-	UE_LOG(LogTemp, Log, TEXT("Size: %d"), BufferLines.Num())
-	_linesBuffer = RHICreateStructuredBuffer(sizeof(F2DLine), sizeof(F2DLine) * Lines.Num(), BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
-	_linesBufferUAV = RHICreateUnorderedAccessView(_linesBuffer, false, false);
-
-	Time = 0;
-	BufferTime = 0;
-
-	ClearTarget();
 }
 
-void ULSystemShaderComponent::SerializeSettings(FString Name)
+void ULSystemShaderComponent::CreateLineBuffer()
+{
+	if (LinesBuffer.IsValid())
+	{
+		LinesBuffer.SafeRelease();
+	}
+
+	if (LinesBufferUAV.IsValid())
+	{
+		LinesBufferUAV.SafeRelease();
+	}
+	
+	UE_LOG(LogLSystemShader, Log, TEXT("Creating lines buffer with %d lines"), Lines.Num())
+	
+	FRHIResourceCreateInfo CreateInfo{ *FString("LineBufferInfo") };
+	CreateInfo.ResourceArray = &Lines;
+
+	LinesBuffer = RHICreateStructuredBuffer(sizeof(F2DLine), sizeof(F2DLine) * Lines.Num(), BUF_UnorderedAccess | BUF_ShaderResource, CreateInfo);
+	LinesBufferUAV = RHICreateUnorderedAccessView(LinesBuffer, false, false);
+}
+
+void ULSystemShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (!bPaused)
+	{
+		Time += CurrentDeltaTime = DeltaTime;
+
+		if (Time > LSystemConstants::StartDelay)
+		{
+			BufferTime += CurrentDeltaTime;
+		}
+
+		for (int i = 0; i < LSystemConstants::UpdatesPerTick; i++)
+		{
+			UpdateShader();
+		}
+	}
+}
+
+void ULSystemShaderComponent::SerializeSettings(const FString Name)
 {
 	FLSystemSettings Settings;
 	Settings.Actions = Actions;
-	Settings.Iterations = iterations;
+	Settings.Iterations = SystemIterations;
 	Settings.Rules = Rules;
 	Settings.Start = Start;
+	
 	UComputeShaderFunctionLibrary::SerializeStruct(Settings, FPaths::ProjectDir().Append("/Saves/" + Name + ".txt"));
 }
 
@@ -191,11 +251,19 @@ bool ULSystemShaderComponent::DeSerializeSettings(FString Path)
 	if (FileManager.FileExists(*Path))
 	{
 		FLSystemSettings Settings = UComputeShaderFunctionLibrary::DeSerializeStruct<FLSystemSettings>(Path);
+		
 		Actions = Settings.Actions;
-		iterations = Settings.Iterations;
+		SystemIterations = Settings.Iterations;
 		Rules = Settings.Rules;
 		Start = Settings.Start;
-		GenerateSystem();
+		
+		InitShader();
+
+		if (OnDeSerializeDone.IsBound())
+		{
+			OnDeSerializeDone.Broadcast();
+		}
+		
 		return true;
 	}
 	return false;
@@ -203,9 +271,13 @@ bool ULSystemShaderComponent::DeSerializeSettings(FString Path)
 
 TArray<FString> ULSystemShaderComponent::GetAllSettings()
 {
-	TArray<FString> Out;
+	const FString Directory = FPaths::ProjectDir() / "Saves/LSystem/";
+	
 	IPlatformFile& FileManager = FPlatformFileManager::Get().GetPlatformFile();
-	FileManager.FindFiles(Out, *FPaths::ProjectDir().Append("Saves/LSystem/"), *FString(".txt"));
+	
+	TArray<FString> Out;
+	FileManager.FindFiles(Out, *Directory, *FString(".txt"));
+	
 	return Out;
 }
 
@@ -213,13 +285,12 @@ FString ULSystemShaderComponent::GetIteratedString(FString ToUse)
 {
 	FString Previous = ToUse;
 	FString New;
-	for (int i = 0; i < iterations; i++)
+	for (int i = 0; i < SystemIterations; i++)
 	{
 		for (int Index = 0; Index < Previous.Len(); Index++)
 		{
 			const FString Character = UKismetStringLibrary::GetSubstring(Previous, Index, 1);
 			FString ToAppend = Character;
-			//UE_LOG(LogTemp, Log, TEXT("Replacing: %s"), *Character)
 			for (auto& Rule : Rules)
 			{
 				if (Character == Rule.Key)
@@ -228,93 +299,114 @@ FString ULSystemShaderComponent::GetIteratedString(FString ToUse)
 					break;
 				}
 			}
-			//UE_LOG(LogTemp, Log, TEXT("Append: %s"), *ToAppend)
 			New.Append(ToAppend);
 		}
-		//UE_LOG(LogTemp, Log, TEXT("Iteration %d: %s"), i,  *New)
-		UE_LOG(LogTemp, Log, TEXT("Iteration length %d"), New.Len())
+
+		UE_LOG(LogLSystemShader, Log, TEXT("Iteration length %d"), New.Len())
 		Previous = New;
 		New = "";
 	}
 	return Previous;
 }
 
+FString ULSystemShaderComponent::GetStartString() const
+{
+	return Start;
+}
+
+void ULSystemShaderComponent::SetStartString(const FString& Value)
+{
+	Start = Value;
+}
+
+TMap<FString, FString> ULSystemShaderComponent::GetReplaceRules() const
+{
+	return Rules;
+}
+
+void ULSystemShaderComponent::SetReplaceRules(const TMap<FString, FString> NewRules)
+{
+	Rules = NewRules;
+}
+
+TMap<FString, FLSystemRuleList> ULSystemShaderComponent::GetCharacterActions() const
+{
+	return Actions;
+}
+
+void ULSystemShaderComponent::SetCharacterActions(const TMap<FString, FLSystemRuleList>& NewActions)
+{
+	Actions = NewActions;
+}
+
+int ULSystemShaderComponent::GetIterations() const
+{
+	return SystemIterations;
+}
+
+void ULSystemShaderComponent::SetIterations(const int Value)
+{
+	SystemIterations = Value;
+}
+
+float ULSystemShaderComponent::GetPercentagePerSecond() const
+{
+	return PercentagePerSecond;
+}
+
+void ULSystemShaderComponent::SetPercentagePerSecond(const float Value)
+{
+	PercentagePerSecond = Value;
+}
+
 void ULSystemShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)
 {
 	if (!ComputeShaderOutput.IsValid())
 	{
-		FRandomStream rng;
+		const FRandomStream Random;
+
+		const FString TextureBufferName = FString("LSystemCS_Output_RenderTarget").Append(FString::SanitizeFloat(Random.FRand()));
 		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(RenderTarget->SizeX, RenderTarget->SizeY), RenderTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, true));
-		ComputeShaderOutputDesc.DebugName = *FString("WhiteNoiseCS_Output_RenderTarget").Append(FString::SanitizeFloat(rng.FRand()));
-		GRenderTargetPool.FindFreeElement(RHICommands, ComputeShaderOutputDesc, ComputeShaderOutput, TEXT("WhiteNoiseCS_Output_RenderTarget"));
+		ComputeShaderOutputDesc.DebugName = *TextureBufferName;
+		GRenderTargetPool.FindFreeElement(RHICommands, ComputeShaderOutputDesc, ComputeShaderOutput, *TextureBufferName);
 	}
 }
 
-void ULSystemShaderComponent::DoUpdate() {
+void ULSystemShaderComponent::UpdateShader() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
 
-			TShaderMapRef<FLSystemShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			const TShaderMapRef<FLSystemShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
-			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+			FLSystemShaderDeclaration::FParameters Params;
+			Params.Lines = LinesBufferUAV.GetReference();
+			Params.TrailMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
+			Params.NumLines = AmountOfLines;
+			Params.Time = BufferTime;
+			Params.PercentPerSecond = PercentagePerSecond;
 
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->Lines.GetBaseIndex(), _linesBufferUAV);
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->Trailmap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->NumLines.GetBaseIndex(), sizeof(int), &AmountOfLines);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Time.GetBaseIndex(), sizeof(float), &BufferTime);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->PercentagePerSecond.GetBaseIndex(), sizeof(float), &PercentagePerSecond);
-
-			RHICommands.SetComputeShader(rhiComputeShader);
-
-			if (Time > 1 && !Paused)
-				DispatchComputeShader(RHICommands, cs, AmountOfLines, 1, 1);
-
+			if (Time > LSystemConstants::StartDelay)
 			{
-				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+				FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(AmountOfLines, 1, 1));
 			}
+
+			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
 		});
 }
 
-void ULSystemShaderComponent::ClearTarget()
+void ULSystemShaderComponent::TogglePaused()
 {
-	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
-		[&](FRHICommandListImmediate& RHICommands)
-		{
-			CheckRenderBuffers(RHICommands);
-
-			TShaderMapRef<FClearShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-
-			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->Trailmap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Width.GetBaseIndex(), sizeof(int), &width);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Height.GetBaseIndex(), sizeof(int), &height);
-
-			RHICommands.SetComputeShader(rhiComputeShader);
-
-			DispatchComputeShader(RHICommands, cs, width, height, 1);
-
-			{
-				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
-			}
-		});
+	IComputeShaderBase::TogglePaused();
 }
 
-// Called every frame
-void ULSystemShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void ULSystemShaderComponent::ClearShader()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (!Paused)
+	if (ComputeShaderOutput.IsValid() && IsValid(RenderTarget))
 	{
-		Delta = DeltaTime;
-		Time += Delta;
-		if (Time > 1)
-			BufferTime += Delta;
-
-		for (int i = 0; i < 10; i++)
-			DoUpdate();
+		UComputeShaderFunctionLibrary::ClearShader(ComputeShaderOutput, RenderTarget, Width, Height);
 	}
 }
+
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ComputeShaderBase.h"
 #include "ComputeShaderDeclarations.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
@@ -13,57 +14,56 @@
 
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class COMPUTESHADEREXAMPLE_API UMandelbrotShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API UMandelbrotShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	UMandelbrotShaderComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
 	UFUNCTION(BlueprintCallable)
-		void Reset();
+	virtual void ClearShader() override;
 	UFUNCTION(BlueprintCallable)
-		void EnqueueUpdate();
-
-	void DoUpdate();
-
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	virtual void InitShader() override;
+	virtual void UpdateShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
+	
+	UFUNCTION(BlueprintCallable)
+	void EnqueueUpdate();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
+	int Width = TEXTURE_WIDTH;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int width = TEXTURE_WIDTH;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int height = TEXTURE_HEIGHT;
+	int Height = TEXTURE_HEIGHT;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		float zoom = FMath::Pow(5.f,5.f);
+	float Zoom = FMath::Pow(5.f,5.f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta = (ClampMin = 0))
-		FVector2Float center = FVector2Float(0.5, 0.5);
+	FVector2Float Center = FVector2Float(0.5, 0.5);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime", meta = (ClampMin = 0))
-		int iterations = 1000;
+	int Iterations = 1000;
 
-	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* RenderTarget;
+	UTextureRenderTarget2D* RenderTarget;
+	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		bool bDoUpdate;
+	bool bDoUpdate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		int Mode = 0;
+	int Mode = 0;
 
 private:
 	float ZoomLevel;

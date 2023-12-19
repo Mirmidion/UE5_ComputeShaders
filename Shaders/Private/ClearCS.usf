@@ -1,15 +1,24 @@
 #include "/Engine/Public/Platform.ush"
 
-int width;
-int height;
-RWTexture2D<float4> TrailMap;
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
 
-[numthreads(8,8,1)]
+RWTexture2D<float4> TextureToClear;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+int Width;
+int Height;
+
+[numthreads(16,16,1)]
 void ClearTexture (uint3 id : SV_DispatchThreadID)
 {
-	if (id.x < 0 || id.x >= (uint)width || id.y < 0 || id.y >= (uint)height) {
+	if (id.x < 0 || id.x >= (uint)Width || id.y < 0 || id.y >= (uint)Height) {
 		return;
 	}
 	
-	TrailMap[id.yx] = 0;
+	TextureToClear[id.xy] = 0;
 }

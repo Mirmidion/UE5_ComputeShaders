@@ -1,5 +1,8 @@
 #include "/Engine/Public/Platform.ush"
-//#pragma kernel Update
+
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
 
 struct AgentV2 {
 	float2 position;
@@ -8,7 +11,7 @@ struct AgentV2 {
 	int speciesIndex;
 };
 
-struct SpeciesSettings {
+struct SpeciesSetting {
 	float moveSpeed;
 	float turnSpeed;
 
@@ -18,21 +21,28 @@ struct SpeciesSettings {
 	float4 colour;
 };
 
-RWStructuredBuffer<SpeciesSettings> speciesSettings;
-uint numSpecies;
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
 
-
-RWStructuredBuffer<AgentV2> agents;
-uint numAgents;
-
+RWStructuredBuffer<SpeciesSetting> SpeciesSettings;
+RWStructuredBuffer<AgentV2> Agents;
 RWTexture2D<float4> TrailMap;
-int width;
-int height;
 
-float trailWeight;
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
 
-float deltaTime;
-float time;
+uint NumSpecies;
+uint NumAgents;
+
+int Width;
+int Height;
+
+float TrailWeight;
+
+float DeltaTime;
+float Time;
 
 // Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf
 uint hash(uint state)
@@ -52,26 +62,26 @@ float scaleToRange01(uint state)
 }
 
 
-float sense(AgentV2 agent, SpeciesSettings settings, float sensorAngleOffset) {
-	float sensorAngle = agent.angle + sensorAngleOffset;
-	float2 sensorDir = float2(cos(sensorAngle), sin(sensorAngle));
+float sense(AgentV2 agent, SpeciesSetting settings, float sensorAngleOffset) {
+	float sensor_angle = agent.angle + sensorAngleOffset;
+	float2 sensor_direction = float2(cos(sensor_angle), sin(sensor_angle));
 
-	float2 sensorPos = agent.position + sensorDir * settings.sensorOffsetDst;
-	int sensorCentreX = (int) sensorPos.x;
-	int sensorCentreY = (int) sensorPos.y;
+	float2 sensor_position = agent.position + sensor_direction * settings.sensorOffsetDst;
+	int x_sensor_center = (int) sensor_position.x;
+	int y_sensor_center = (int) sensor_position.y;
 
 	float sum = 0;
 
-	int4 senseWeight = agent.speciesMask * 2 - 1;
+	int4 sense_weight = agent.speciesMask * 2 - 1;
 
-	for (int offsetX = -settings.sensorSize; offsetX <= settings.sensorSize; offsetX ++) {
-		for (int offsetY = -settings.sensorSize; offsetY <= settings.sensorSize; offsetY ++) {
-			int PosX = sensorCentreX + offsetX;
-			int PosY = sensorCentreY + offsetY;
-			if (PosX >= 0 && PosX < width && sensorCentreY + offsetY >= 0 && PosY < height) {
-				int sampleX = min(width - 1, max(0, PosX));
-				int sampleY = min(height - 1, max(0, PosY));
-				sum += dot(senseWeight, TrailMap[int2(sampleX,sampleY)]);
+	for (int x_offset = -settings.sensorSize; x_offset <= settings.sensorSize; x_offset ++) {
+		for (int y_offset = -settings.sensorSize; y_offset <= settings.sensorSize; y_offset ++) {
+			int x_position = x_sensor_center + x_offset;
+			int y_position = y_sensor_center + y_offset;
+			if (x_position >= 0 && x_position < Width && y_sensor_center + y_offset >= 0 && y_position < Height) {
+				int x_sample = min(Width - 1, max(0, x_position));
+				int y_sample = min(Height - 1, max(0, y_position));
+				sum += dot(sense_weight, TrailMap[int2(x_sample,y_sample)]);
 			}
 		}
 	}
@@ -82,16 +92,16 @@ float sense(AgentV2 agent, SpeciesSettings settings, float sensorAngleOffset) {
 [numthreads(16,1,1)]
 void Update (uint3 id : SV_DispatchThreadID)
 {
-	if (id.x >= numAgents) {
+	if (id.x >= NumAgents) {
 		return;
 	}
 	
 	
-	AgentV2 agent = agents[id.x];
-	SpeciesSettings settings = speciesSettings[agent.speciesIndex];
+	AgentV2 agent = Agents[id.x];
+	SpeciesSetting settings = SpeciesSettings[agent.speciesIndex];
 	float2 pos = agent.position;
 
-	uint random = hash(pos.y * width + pos.x + hash(id.x + time * 100000));
+	uint random = hash(pos.y * Width + pos.x + hash(id.x + Time * 100000));
 	
 	// Steer based on sensory data
 	float sensorAngleRad = settings.sensorAngleDegrees * (3.1415 / 180);
@@ -102,45 +112,45 @@ void Update (uint3 id : SV_DispatchThreadID)
 	
 	float randomSteerStrength = scaleToRange01(random);
 	float turnSpeed = settings.turnSpeed * 2 * 3.1415;
-	float angleOld = agents[id.x].angle;
+	float angleOld = Agents[id.x].angle;
 	
 	// Continue in same direction
 	if (weightForward > weightLeft && weightForward > weightRight) {
-		agents[id.x].angle = angleOld;
+		Agents[id.x].angle = angleOld;
 	}
 	else if (weightForward < weightLeft && weightForward < weightRight) {
-		agents[id.x].angle = (randomSteerStrength - 0.5) * 2 * turnSpeed * deltaTime + angleOld;
+		Agents[id.x].angle = (randomSteerStrength - 0.5) * 2 * turnSpeed * DeltaTime + angleOld;
 	}
 	// Turn right
 	else if (weightRight > weightLeft) {
-		agents[id.x].angle = randomSteerStrength * turnSpeed * deltaTime - angleOld;
+		Agents[id.x].angle = randomSteerStrength * turnSpeed * DeltaTime - angleOld;
 	}
 	// Turn left
 	else if (weightLeft > weightRight) {
-		agents[id.x].angle = randomSteerStrength * turnSpeed * deltaTime+ angleOld;
+		Agents[id.x].angle = randomSteerStrength * turnSpeed * DeltaTime+ angleOld;
 	}
 	
 	
 	// Update position
 	float2 direction = float2(cos(agent.angle), sin(agent.angle));
-	float2 newPos = agent.position + direction * deltaTime *  settings.moveSpeed;
+	float2 newPos = agent.position + direction * DeltaTime *  settings.moveSpeed;
 
 	
 	// Clamp position to map boundaries, and pick new random move dir if hit boundary
-	if (newPos.x < 0 || newPos.x >= width || newPos.y < 0 || newPos.y >= height) {
+	if (newPos.x < 0 || newPos.x >= Width || newPos.y < 0 || newPos.y >= Height) {
 		random = hash(random);
 		float randomAngle = scaleToRange01(random) * 2 * 3.1415;
 
-		newPos.x = min(width-1,max(0, newPos.x));
-		newPos.y = min(height-1,max(0, newPos.y));
-		agents[id.x].angle = randomAngle;
+		newPos.x = min(Width-1,max(0, newPos.x));
+		newPos.y = min(Height-1,max(0, newPos.y));
+		Agents[id.x].angle = randomAngle;
 	}
 	else {
 		int2 coord = int2(newPos);
 		float4 oldTrail = TrailMap[coord];
-		TrailMap[coord] = min(10, oldTrail + agent.speciesMask * trailWeight * deltaTime);
+		TrailMap[coord] = min(10, oldTrail + agent.speciesMask * TrailWeight * DeltaTime);
 	}
 	
-	agents[id.x].position = newPos;
+	Agents[id.x].position = newPos;
 }
 

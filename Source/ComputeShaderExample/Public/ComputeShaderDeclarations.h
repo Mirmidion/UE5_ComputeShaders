@@ -7,6 +7,9 @@
 
 #include <atomic>
 #include "CoreMinimal.h"
+#include "ShaderParameterStruct.h"
+#include "TypeDefinitions/CustomTypeDefinitions.h"
+
 
 class FComputeShaderDeclaration : public FGlobalShader
 {
@@ -19,22 +22,19 @@ class FBoidShaderDeclaration : public FComputeShaderDeclaration
 {
 	DECLARE_SHADER_TYPE(FBoidShaderDeclaration, Global);
 
-	FBoidShaderDeclaration() {}
+	SHADER_USE_PARAMETER_STRUCT(FBoidShaderDeclaration, FComputeShaderDeclaration);
 
-	explicit FBoidShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<FAgent>, Agents)
+		SHADER_PARAMETER_UAV(RWTexture2D<float3>, Positions)
+		SHADER_PARAMETER_UAV(RWTexture2D<float>, Times)
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-
-public:
-
-	LAYOUT_FIELD(FShaderResourceParameter, positions);
-	LAYOUT_FIELD(FShaderResourceParameter, times);
-	LAYOUT_FIELD(FShaderResourceParameter, agents);
 };
 
 class FMoldShaderDeclaration : public FComputeShaderDeclaration
@@ -42,30 +42,26 @@ class FMoldShaderDeclaration : public FComputeShaderDeclaration
 #define TEXTURE_WIDTH 1920
 #define TEXTURE_HEIGHT 1080
 
-
 	DECLARE_SHADER_TYPE(FMoldShaderDeclaration, Global);
 
-	FMoldShaderDeclaration() {}
+	SHADER_USE_PARAMETER_STRUCT(FMoldShaderDeclaration, FComputeShaderDeclaration);
 
-	explicit FMoldShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<FAgentV2>, Agents)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER(UINT, NumAgents) 
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(float, MoveSpeed) 
+		SHADER_PARAMETER(float, DeltaTime) 
+		SHADER_PARAMETER(float, Time) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-
-public:
-
-	LAYOUT_FIELD(FShaderResourceParameter, agents);
-	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
-	LAYOUT_FIELD(FShaderResourceParameter, numAgents);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-	LAYOUT_FIELD(FShaderResourceParameter, moveSpeed);
-	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
-	LAYOUT_FIELD(FShaderResourceParameter, Time);
 };
 
 class FUpdateShaderDeclaration : public FComputeShaderDeclaration
@@ -73,69 +69,65 @@ class FUpdateShaderDeclaration : public FComputeShaderDeclaration
 
 	DECLARE_SHADER_TYPE(FUpdateShaderDeclaration, Global);
 
-	FUpdateShaderDeclaration() {}
+	SHADER_USE_PARAMETER_STRUCT(FUpdateShaderDeclaration, FComputeShaderDeclaration);
 
-	explicit FUpdateShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<FSpeciesSettings>, SpeciesSettings)
+		SHADER_PARAMETER_UAV(RWTexture2D<FAgentV2>, Agents)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER(UINT, NumSpecies) 
+		SHADER_PARAMETER(UINT, NumAgents) 
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(float, TrailWeight) 
+		SHADER_PARAMETER(float, DeltaTime) 
+		SHADER_PARAMETER(float, Time) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-
-	LAYOUT_FIELD(FShaderResourceParameter, speciesSettings);
-	LAYOUT_FIELD(FShaderResourceParameter, numSpecies);
-
-	LAYOUT_FIELD(FShaderResourceParameter, agents);
-	LAYOUT_FIELD(FShaderResourceParameter, numAgents);
-
-	LAYOUT_FIELD(FShaderResourceParameter, TrailMap);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-
-	LAYOUT_FIELD(FShaderResourceParameter, trailWeight);
-
-	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
-	LAYOUT_FIELD(FShaderResourceParameter, time);
 };
 
 class FDiffuseShaderDeclaration : public FComputeShaderDeclaration
 {
-
 	DECLARE_SHADER_TYPE(FDiffuseShaderDeclaration, Global);
 
-	FDiffuseShaderDeclaration() {}
+	SHADER_USE_PARAMETER_STRUCT(FDiffuseShaderDeclaration, FComputeShaderDeclaration);
 
-	explicit FDiffuseShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DiffusedMap)
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(float, DeltaTime) 
+		SHADER_PARAMETER(float, DecayRate) 
+		SHADER_PARAMETER(float, DiffuseRate) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, TrailMap);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-
-	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
-
-	LAYOUT_FIELD(FShaderResourceParameter, decayRate);
-	LAYOUT_FIELD(FShaderResourceParameter, diffuseRate);
-	LAYOUT_FIELD(FShaderResourceParameter, DiffusedTrailMap);
 };
 
 class FColorMapShaderDeclaration : public FComputeShaderDeclaration
 {
-
 	DECLARE_SHADER_TYPE(FColorMapShaderDeclaration, Global);
 
-	FColorMapShaderDeclaration() {}
+	SHADER_USE_PARAMETER_STRUCT(FColorMapShaderDeclaration, FComputeShaderDeclaration);
 
-	explicit FColorMapShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<FSpeciesSettings>, SpeciesSettings)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, ColorMap)
+		SHADER_PARAMETER(UINT, NumSpecies) 
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -143,131 +135,112 @@ class FColorMapShaderDeclaration : public FComputeShaderDeclaration
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
 
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, speciesSettings);
-	LAYOUT_FIELD(FShaderResourceParameter, numSpecies);
-
-	LAYOUT_FIELD(FShaderResourceParameter, TrailMap);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-
-	LAYOUT_FIELD(FShaderResourceParameter, ColourMap);
 };
 
 class FPerlinShaderDeclaration : public FComputeShaderDeclaration
 {
 
-	DECLARE_SHADER_TYPE(FPerlinShaderDeclaration, Global);
+	DECLARE_GLOBAL_SHADER(FPerlinShaderDeclaration);
 
-	FPerlinShaderDeclaration() {}
-
-	explicit FPerlinShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	SHADER_USE_PARAMETER_STRUCT(FPerlinShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, NoiseMap)
+		SHADER_PARAMETER(FIntVector2d, Dimensions) 
+		SHADER_PARAMETER(FVector3Float, Start) 
+		SHADER_PARAMETER(float, Offset) 
+		SHADER_PARAMETER(int, Octaves) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, texture);
-	LAYOUT_FIELD(FShaderResourceParameter, start); 
-	LAYOUT_FIELD(FShaderResourceParameter, posY);
-	LAYOUT_FIELD(FShaderResourceParameter, dimensions);
-	LAYOUT_FIELD(FShaderResourceParameter, offset);
-	LAYOUT_FIELD(FShaderResourceParameter, octaves);
 };
 
 class FLinesShaderDeclaration : public FComputeShaderDeclaration
 {
-
 	DECLARE_SHADER_TYPE(FLinesShaderDeclaration, Global);
 
-	FLinesShaderDeclaration() {}
-
-	explicit FLinesShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
-
+	SHADER_USE_PARAMETER_STRUCT(FLinesShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float2>, Agents)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER(int, NumAgents) 
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(float, DeltaTime) 
+		SHADER_PARAMETER(float, Time) 
+	END_SHADER_PARAMETER_STRUCT()
+	
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, agents);
-	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
-	LAYOUT_FIELD(FShaderResourceParameter, numAgents);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-	LAYOUT_FIELD(FShaderResourceParameter, deltaTime);
-	LAYOUT_FIELD(FShaderResourceParameter, Time);
 };
 
 class FMandelbrotShaderDeclaration : public FComputeShaderDeclaration
 {
+	DECLARE_GLOBAL_SHADER(FMandelbrotShaderDeclaration);
 
-	DECLARE_SHADER_TYPE(FMandelbrotShaderDeclaration, Global);
-
-	FMandelbrotShaderDeclaration() {}
-
-	explicit FMandelbrotShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	SHADER_USE_PARAMETER_STRUCT(FMandelbrotShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(FVector2Float, Center) 
+		SHADER_PARAMETER(float, Zoom) 
+		SHADER_PARAMETER(int, Iterations) 
+		SHADER_PARAMETER(int, Mode) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, trailmap);
-	LAYOUT_FIELD(FShaderResourceParameter, width);
-	LAYOUT_FIELD(FShaderResourceParameter, height);
-	LAYOUT_FIELD(FShaderResourceParameter, center);
-	LAYOUT_FIELD(FShaderResourceParameter, zoom);
-	LAYOUT_FIELD(FShaderResourceParameter, iterations);
-	LAYOUT_FIELD(FShaderResourceParameter, mode);
 };
 
 class FLSystemShaderDeclaration : public FComputeShaderDeclaration
 {
-
 	DECLARE_SHADER_TYPE(FLSystemShaderDeclaration, Global);
-
-	FLSystemShaderDeclaration() {}
-
-	explicit FLSystemShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
-
+	
+	SHADER_USE_PARAMETER_STRUCT(FLSystemShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<F2DLine>, Lines)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER(int, NumLines) 
+		SHADER_PARAMETER(float, Time)
+		SHADER_PARAMETER(float, PercentPerSecond)
+	END_SHADER_PARAMETER_STRUCT()
+	
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, Lines);
-	LAYOUT_FIELD(FShaderResourceParameter, Trailmap);
-	LAYOUT_FIELD(FShaderResourceParameter, NumLines);
-	LAYOUT_FIELD(FShaderResourceParameter, Time);
-	LAYOUT_FIELD(FShaderResourceParameter, PercentagePerSecond);
 };
 
 class FClearShaderDeclaration : public FComputeShaderDeclaration
 {
-
 	DECLARE_SHADER_TYPE(FClearShaderDeclaration, Global);
 
-	FClearShaderDeclaration() {}
-
-	explicit FClearShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+	SHADER_USE_PARAMETER_STRUCT(FClearShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TextureToClear)
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-
-public:
-	LAYOUT_FIELD(FShaderResourceParameter, Trailmap);
-	LAYOUT_FIELD(FShaderResourceParameter, Width);
-	LAYOUT_FIELD(FShaderResourceParameter, Height);
 };

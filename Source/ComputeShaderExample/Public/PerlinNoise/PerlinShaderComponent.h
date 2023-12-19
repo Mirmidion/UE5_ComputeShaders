@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ComputeShaderBase.h"
 #include "ComputeShaderDeclarations.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
@@ -10,50 +11,46 @@
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "PerlinShaderComponent.generated.h"
 
-
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COMPUTESHADEREXAMPLE_API UPerlinShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API UPerlinShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UPerlinShaderComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
 	UFUNCTION(BlueprintCallable)
-		void Reset();
-
-	void Generate();
-
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	virtual void InitShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void ClearShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void UpdateShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		FVector3Float Position;
+	FVector3Float Position;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		float Offset = 10;
+	float Offset = 10;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		int Octaves = 4;
+	int Octaves = 4;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		FIntVector2d Dimensions = FIntVector2d(1920, 1080);
-
-	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
+	FIntVector2d Dimensions = FIntVector2d(1920, 1080);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* RenderTarget;
+	UTextureRenderTarget2D* RenderTarget;
+	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
 protected:
-	FBufferRHIRef _valuesBuffer;
-	FUnorderedAccessViewRHIRef _valuesBufferUAV;
+	FBufferRHIRef ValuesBuffer;
+	FUnorderedAccessViewRHIRef ValuesBufferUAV;
 
 	float Delta;
 	float Time;

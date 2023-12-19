@@ -19,6 +19,15 @@ FLSystemRule::FLSystemRule(const ELSystemAction Action, const int Value) : Actio
 {
 }
 
+FLSystemRuleList::FLSystemRuleList()
+{
+}
+
+FLSystemRuleList::FLSystemRuleList(FLSystemRule Action)
+{
+	List.Add(Action);
+}
+
 F2DLine::F2DLine()
 {
 }
@@ -79,8 +88,8 @@ FVector4Float::FVector4Float() : X(0), Y(0), Z(0), W(0)
 
 FAgentV2::FAgentV2()
 {
-	angle = 0;
-	speciesIndex = 0;
-	speciesMask = FIntVector4d();
-	position = FVector2Float();
+	Angle = 0;
+	SpeciesIndex = 0;
+	SpeciesMask = FIntVector4d();
+	Position = FVector2Float();
 }

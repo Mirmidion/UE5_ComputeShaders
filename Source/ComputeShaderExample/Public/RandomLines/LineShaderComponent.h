@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ComputeShaderBase.h"
 #include "ComputeShaderDeclarations.h"
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
@@ -10,53 +11,45 @@
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "LineShaderComponent.generated.h"
 
-
-
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class COMPUTESHADEREXAMPLE_API ULineShaderComponent : public UActorComponent
+class COMPUTESHADEREXAMPLE_API ULineShaderComponent : public UActorComponent, public IComputeShaderBase
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	ULineShaderComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
 	UFUNCTION(BlueprintCallable)
-		void Reset();
-
-	void DoUpdate();
-
-	void CheckRenderBuffers(FRHICommandListImmediate& RHICommands);
+	virtual void ClearShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void InitShader() override;
+	UFUNCTION(BlueprintCallable)
+	virtual void TogglePaused() override;
+	virtual void UpdateShader() override;
+	virtual void CheckRenderBuffers(FRHICommandListImmediate& RHICommands) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Init")
-		int amountOfAgents = 1;
+	int AmountOfAgents = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int width = 480;
+	int Width = 480;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Materials")
-		int height = 270;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Settings|Runtime")
-		bool Paused = false;
-
-	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
+	int Height = 270;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, NoClear, Category = "Simulation Materials")
-		UTextureRenderTarget2D* RenderTarget;
+	UTextureRenderTarget2D* RenderTarget;
+	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
 protected:
-	FBufferRHIRef _agentsBuffer;
-	FUnorderedAccessViewRHIRef _agentsBufferUAV;
+	FBufferRHIRef AgentsBuffer;
+	FUnorderedAccessViewRHIRef AgentsBufferUAV;
 
-	float Delta;
+	float CurrentDeltaTime;
 	float Time;
 };

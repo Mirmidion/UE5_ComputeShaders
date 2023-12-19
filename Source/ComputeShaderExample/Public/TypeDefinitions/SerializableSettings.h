@@ -12,12 +12,12 @@ struct FLSystemSettings
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		FString Start;
+	FString Start;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		int Iterations;
+	int Iterations;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TMap<FString, FString> Rules;
+	TMap<FString, FString> Rules;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TMap<FString, FLSystemRule> Actions;
+	TMap<FString, FLSystemRuleList> Actions;
 
 };

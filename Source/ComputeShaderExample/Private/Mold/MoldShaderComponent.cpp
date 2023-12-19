@@ -6,96 +6,21 @@
 #include "ComputeShaderDeclarations.h"
 #include <Runtime/Engine/Classes/Kismet/KismetRenderingLibrary.h>
 
+#include "RenderGraphUtils.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MoldV2/MoldV2ShaderComponent.h"
+#include "Static/ComputeShaderFunctionLibrary.h"
 
-// Sets default values for this component's properties
 UMoldShaderComponent::UMoldShaderComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
 }
 
-
-// Called when the game starts
 void UMoldShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Reset();
-}
-
-void UMoldShaderComponent::Reset()
-{
-	FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
-
-	FRandomStream rng;
-	
-	{
-		TResourceArray<FAgent> agentsResourceArray;
-		agentsResourceArray.Init(FAgent(), amountOfAgents);
-
-		for (int i = 0; i < amountOfAgents; i++)
-		{
-			FAgent& agent = agentsResourceArray[i];
-
-			FVector2f Center = FVector2f(width / 2.f, height / 2.f);
-			FVector2f Position;
-			const float RandomAngle = rng.FRand() * 2 * PI;
-			const FVector randomVec = rng.GetUnitVector();
-			float Angle = 0.f;
-
-			switch (spawnMode)
-			{
-			case ESpawnMode::Random:
-			{
-				Position = FVector2f(rng.FRandRange(0, width), rng.FRandRange(0, height));
-				Angle = RandomAngle;
-				break;
-			}
-			case ESpawnMode::Point:
-			{
-				Position = Center;
-				Angle = RandomAngle;
-				break;
-			}
-			case ESpawnMode::InwardCircle:
-			{
-				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.5f;
-				FVector2f Normalized = Center - Position;
-				Normalized.Normalize();
-				Angle = FMath::Atan2(Normalized.Y, Normalized.X);
-				break;
-			}
-			case ESpawnMode::RandomCircle:
-			{
-				Position = Center + FVector2f(randomVec.X, randomVec.Y) * height * 0.15f;
-				Angle = RandomAngle;
-				break;
-			}
-			}
-
-			agent.position = Position;
-			agent.angle = Angle;
-		}
-
-		FRHIResourceCreateInfo createInfo{ *FString("") };
-		createInfo.ResourceArray = &agentsResourceArray;
-
-		_agentsBuffer = RHICreateStructuredBuffer(sizeof(FAgent), sizeof(FAgent) * amountOfAgents, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
-		_agentsBufferUAV = RHICreateUnorderedAccessView(_agentsBuffer, false, false);
-	}
-
-	Time = 0;
-
-	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
-	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
-
-	BufferRenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), width, height, RTF_RGBA8);
-	BufferRenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+	InitShader();
 }
 
 void UMoldShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICommands)
@@ -117,37 +42,34 @@ void UMoldShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHIComma
 	}
 }
 
-void UMoldShaderComponent::DoUpdate() {
+void UMoldShaderComponent::UpdateMold() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
 
-			TShaderMapRef<FMoldShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			const TShaderMapRef<FMoldShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
-			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
-			RHICommands.SetUAVParameter(rhiComputeShader, cs->trailmap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->numAgents.GetBaseIndex(), sizeof(UINT), &amountOfAgents);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->width.GetBaseIndex(), sizeof(int), &width);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->height.GetBaseIndex(), sizeof(int), &height);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->moveSpeed.GetBaseIndex(), sizeof(float), &speed);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
-			RHICommands.SetShaderParameter(rhiComputeShader, cs->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs->Time.GetBaseIndex(), sizeof(float), &Time);
-
-			RHICommands.SetComputeShader(rhiComputeShader);
+			FMoldShaderDeclaration::FParameters Params;
+			Params.Agents = AgentsBufferUAV;
+			Params.TrailMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
+			Params.NumAgents = AmountOfAgents;
+			Params.Width = Width;
+			Params.Height = Height;
+			Params.MoveSpeed = Speed;
+			Params.DeltaTime = CurrentDeltaTime;
+			Params.Time = Time;
 
 			if (Time > 3)
-				DispatchComputeShader(RHICommands, cs, amountOfAgents, 1, 1);
-
 			{
-				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, BufferShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
+				FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(AmountOfAgents, 1, 1));
 			}
+
+			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, BufferShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FRHICopyTextureInfo());
 		});
 }
 
-void UMoldShaderComponent::DoDiffuse() {
+void UMoldShaderComponent::DiffuseParticles() {
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
@@ -155,19 +77,16 @@ void UMoldShaderComponent::DoDiffuse() {
 
 			TShaderMapRef<FDiffuseShaderDeclaration> cs2(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
-			FRHIComputeShader* rhiComputeShader2 = cs2.GetComputeShader();
+			FDiffuseShaderDeclaration::FParameters Params;
+			Params.TrailMap = BufferShaderOutput->GetRenderTargetItem().UAV;
+			Params.Width = Width;
+			Params.Height = Height;
+			Params.DeltaTime = CurrentDeltaTime;
+			Params.DecayRate = DecayRate;
+			Params.DiffuseRate = DiffuseRate;
+			Params.DiffusedMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
 
-			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->TrailMap.GetBaseIndex(), BufferShaderOutput->GetRenderTargetItem().UAV);
-			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->width.GetBaseIndex(), sizeof(int), &width);
-			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->height.GetBaseIndex(), sizeof(int), &height);
-			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->deltaTime.GetBaseIndex(), sizeof(float), &Delta);
-			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->decayRate.GetBaseIndex(), sizeof(float), &decayRate);
-			RHICommands.SetShaderParameter(rhiComputeShader2, cs2->ParameterMapInfo.LooseParameterBuffers[0].BaseIndex, cs2->diffuseRate.GetBaseIndex(), sizeof(float), &diffuseRate);
-			RHICommands.SetUAVParameter(rhiComputeShader2, cs2->DiffusedTrailMap.GetBaseIndex(), ComputeShaderOutput->GetRenderTargetItem().UAV);
-
-			RHICommands.SetComputeShader(rhiComputeShader2);
-
-			DispatchComputeShader(RHICommands, cs2, width, height, 1);
+			FComputeShaderUtils::Dispatch(RHICommands, cs2, Params, FIntVector(Width, Height, 1));
 
 			{
 				RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
@@ -180,13 +99,97 @@ void UMoldShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!Paused)
+	if (!bPaused)
 	{
-		Delta = DeltaTime;
-		Time += Delta;
+		CurrentDeltaTime = DeltaTime;
+		Time += CurrentDeltaTime;
 			
-		DoUpdate();
-		DoDiffuse();
+		UpdateShader();
 	}
+}
+
+void UMoldShaderComponent::InitShader()
+{
+	FRandomStream rng;
+
+	{
+		TResourceArray<FAgent> agentsResourceArray;
+		agentsResourceArray.Init(FAgent(), AmountOfAgents);
+
+		for (int i = 0; i < AmountOfAgents; i++)
+		{
+			FAgent& agent = agentsResourceArray[i];
+
+			FVector2f Center = FVector2f(Width / 2.f, Height / 2.f);
+			FVector2f Position;
+			const float RandomAngle = rng.FRand() * 2 * PI;
+			const FVector randomVec = rng.GetUnitVector();
+			float Angle = 0.f;
+
+			switch (SpawnMode)
+			{
+			case ESpawnMode::Random:
+			{
+				Position = FVector2f(rng.FRandRange(0, Width), rng.FRandRange(0, Height));
+				Angle = RandomAngle;
+				break;
+			}
+			case ESpawnMode::Point:
+			{
+				Position = Center;
+				Angle = RandomAngle;
+				break;
+			}
+			case ESpawnMode::InwardCircle:
+			{
+				Position = Center + FVector2f(randomVec.X, randomVec.Y) * Height * 0.5f;
+				FVector2f Normalized = Center - Position;
+				Normalized.Normalize();
+				Angle = FMath::Atan2(Normalized.Y, Normalized.X);
+				break;
+			}
+			case ESpawnMode::RandomCircle:
+			{
+				Position = Center + FVector2f(randomVec.X, randomVec.Y) * Height * 0.15f;
+				Angle = RandomAngle;
+				break;
+			}
+			}
+
+			agent.Position = Position;
+			agent.Angle = Angle;
+		}
+
+		FRHIResourceCreateInfo createInfo{ *FString("") };
+		createInfo.ResourceArray = &agentsResourceArray;
+
+		AgentsBuffer = RHICreateStructuredBuffer(sizeof(FAgent), sizeof(FAgent) * AmountOfAgents, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
+		AgentsBufferUAV = RHICreateUnorderedAccessView(AgentsBuffer, false, false);
+	}
+
+	Time = 0;
+
+	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Width, Height, RTF_RGBA8);
+	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+
+	BufferRenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Width, Height, RTF_RGBA8);
+	BufferRenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
+}
+
+void UMoldShaderComponent::UpdateShader()
+{
+	UpdateMold();
+	DiffuseParticles();
+}
+
+void UMoldShaderComponent::TogglePaused()
+{
+	IComputeShaderBase::TogglePaused();
+}
+
+void UMoldShaderComponent::ClearShader()
+{
+	UComputeShaderFunctionLibrary::ClearShader(ComputeShaderOutput, RenderTarget, Width, Height);
+	UComputeShaderFunctionLibrary::ClearShader(BufferShaderOutput, BufferRenderTarget, Width, Height);
 }
 

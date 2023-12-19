@@ -68,7 +68,7 @@ public:
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		int numBoids = 1000;
+	int numBoids = 1000;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float spawnRadius = 600.0f;
@@ -77,9 +77,8 @@ public:
 	TArray<FVector3f> outputPositions;
 
 protected:
-	// GPU side
 	FBufferRHIRef _positionBuffer;
-	FUnorderedAccessViewRHIRef _positionBufferUAV;     // we need a UAV for writing
+	FUnorderedAccessViewRHIRef _positionBufferUAV;
 
 	FBufferRHIRef _timesBuffer;
 	FUnorderedAccessViewRHIRef _timesBufferUAV;

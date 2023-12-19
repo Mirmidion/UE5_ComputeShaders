@@ -5,6 +5,7 @@
 
 
 #include "ComputeShaderDeclarations.h"
+#include "RenderGraphUtils.h"
 #include "ShaderCompilerCore.h"
 
 #include "RHIStaticStates.h"
@@ -110,19 +111,13 @@ void UBoidShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	{
 		TShaderMapRef<FBoidShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
+		FBoidShaderDeclaration::FParameters Params;
+		Params.Agents = _agentsBufferUAV;
+		Params.Positions = _positionBufferUAV;
+		Params.Times = _timesBufferUAV;
 
-		FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+		FComputeShaderUtils::Dispatch(RHICommands, cs, Params, FIntVector(256, 1, 1));
 
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->positions.GetBaseIndex(), _positionBufferUAV);
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->times.GetBaseIndex(), _timesBufferUAV);
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->agents.GetBaseIndex(), _agentsBufferUAV);
-
-		RHICommands.SetComputeShader(rhiComputeShader);
-		UE_LOG(LogTemp, Log, TEXT("%d:%d:%d"), cs->positions.GetBaseIndex(), cs->times.GetBaseIndex(), cs->agents.GetBaseIndex())
-
-		DispatchComputeShader(RHICommands, cs, 256, 1, 1);
-
-		// read back the data
 		{
 		/*uint8* data = (uint8*)RHILockBuffer(_positionBuffer, 0, numBoids * sizeof(FVector3f), RLM_ReadOnly);
 		FMemory::Memcpy(outputPositions.GetData(), data, numBoids * sizeof(FVector3f));

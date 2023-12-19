@@ -1,32 +1,47 @@
 #include "/Engine/Public/Platform.ush"
 
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+
 struct F2DLine {
 	float2 start;
 	float2 end;
 };
 
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
 
-int numLines;
+RWStructuredBuffer<F2DLine> Lines;
+RWTexture2D<float4> TrailMap;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+int NumLines;
 float Time;
-float PercentagePerSecond;
-RWStructuredBuffer<F2DLine> lines;
-RWTexture2D<float4> trailmap;
+float PercentPerSecond;
 
 [numthreads(32, 1, 1)]
-void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+void MainComputeShader(uint3 id : SV_DispatchThreadID)
 {   
-	if (ThreadId.x >= (uint)numLines) {return;}
-
-	F2DLine Line = lines[ThreadId.x];
-	//float distance = sqrt(pow(abs(Line.end.x - Line.start.x),2) + pow(abs(Line.end.y - Line.start.y),2));
-	float2 offsetFraction = (Line.end - Line.start) / 2000.f;
-	float2 currentLocation = Line.start;
-
-	//if (Time * PercentagePerSecond - (ThreadId.x*100.f)  > 0)
-	//for (int i = 0; i < min(Time * PercentagePerSecond- (ThreadId.x*100.f),100); i++)
-	for (int i = 0; i < min(Time * PercentagePerSecond*20,2000); i++)
+	if (id.x >= (uint)NumLines)
 	{
-		trailmap[int2(round(currentLocation))] = float4(1,1,1,1);
-		currentLocation += offsetFraction;
+		return;
+	}
+
+	F2DLine current_line = Lines[id.x];
+	//float distance = sqrt(pow(abs(current_line.end.x - current_line.start.x),2) + pow(abs(current_line.end.y - current_line.start.y),2));
+	const float2 offset_fraction = (current_line.end - current_line.start) / 2000.f;
+	float2 current_location = current_line.start;
+
+	//if (Time * percent_per_second - (id.x*100.f)  > 0)
+	//for (int i = 0; i < min(Time * percent_per_second - (id.x*100.f),100); i++)
+	for (int i = 0; i < min(Time * PercentPerSecond*20,2000); i++)
+	{
+		TrailMap[int2(round(current_location))] = float4(1,1,1,1);
+		current_location += offset_fraction;
 	}
 }

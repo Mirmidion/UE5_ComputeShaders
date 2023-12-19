@@ -1,0 +1,57 @@
+{
+	"start": "X",
+	"iterations": 5,
+	"rules":
+	{
+		"X": "F+[[X]-X]-F[-FX]+X",
+		"F": "FF"
+	},
+	"actions":
+	{
+		"F":
+		{
+			"list": [
+				{
+					"action": "Forward",
+					"actionValue": 40
+				}
+			]
+		},
+		"-":
+		{
+			"list": [
+				{
+					"action": "TurnRight",
+					"actionValue": 25
+				}
+			]
+		},
+		"[":
+		{
+			"list": [
+				{
+					"action": "PushPosition",
+					"actionValue": 40
+				}
+			]
+		},
+		"]":
+		{
+			"list": [
+				{
+					"action": "PopPosition",
+					"actionValue": 40
+				}
+			]
+		},
+		"+":
+		{
+			"list": [
+				{
+					"action": "TurnLeft",
+					"actionValue": 25
+				}
+			]
+		}
+	}
+}
