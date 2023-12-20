@@ -67,12 +67,6 @@ public:
 	{
 		BufferData = Data;
 
-		TResourceArray<T> ResourceArray;
-		ResourceArray.Append(BufferData);
-		
-		FRHIResourceCreateInfo CreateInfo{ *FString("") };
-		CreateInfo.ResourceArray = &ResourceArray;
-
 		BufferSize = sizeof(T) * BufferData.Num();
 
 		if (Buffer.IsValid())
@@ -81,10 +75,21 @@ public:
 		if (BufferUAV.IsValid())
 			BufferUAV.SafeRelease();
 		
-		Buffer = RHICreateStructuredBuffer(sizeof(T), BufferSize, BUF_UnorderedAccess | BUF_ShaderResource, CreateInfo);
-		BufferUAV = RHICreateUnorderedAccessView(Buffer, false, false);
-
-		bSafeToUse = true;
+		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
+		[&](FRHICommandListImmediate& RHICommands)
+		{
+			TResourceArray<T> ResourceArray;
+			ResourceArray.Append(BufferData);
+			
+			FRHIResourceCreateInfo CreateInfo{ *FString("") };
+			CreateInfo.ResourceArray = &ResourceArray;
+			
+			Buffer = RHICreateStructuredBuffer(sizeof(T), BufferSize, BUF_UnorderedAccess | BUF_ShaderResource, CreateInfo);
+			BufferUAV = RHICreateUnorderedAccessView(Buffer, false, false);
+			
+			bSafeToUse = true;
+		});
+		
 	}
 
 	template<typename U>

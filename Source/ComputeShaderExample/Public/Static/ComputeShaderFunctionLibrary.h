@@ -17,7 +17,7 @@ class COMPUTESHADEREXAMPLE_API UComputeShaderFunctionLibrary : public UBlueprint
 	GENERATED_BODY()
 
 public:
-	static void ClearShader(const TRefCountPtr<IPooledRenderTarget>& ComputeShaderOutput, const UTextureRenderTarget2D* RenderTarget,const int& Width, const int& Height);
+	static void ClearShader(const TRefCountPtr<IPooledRenderTarget>& ComputeShaderOutput, UTextureRenderTarget2D* RenderTarget,const int& Width, const int& Height);
 
 
 	template<typename T>

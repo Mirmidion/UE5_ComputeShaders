@@ -151,7 +151,7 @@ void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICom
 
 		const FString TextureBufferName = FString("DiffusedTrailMap_Output_RenderTarget").Append(FString::SanitizeFloat(Random.FRand()));
 		
-		FPooledRenderTargetDesc DiffuseOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DiffuseTarget->SizeX, DiffuseTarget->SizeY), DiffuseTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		FPooledRenderTargetDesc DiffuseOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DiffuseTarget->SizeX, DiffuseTarget->SizeY), DiffuseTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_NoTiling, TexCreate_ShaderResource | TexCreate_UAV, false));
 		DiffuseOutputDesc.DebugName = *TextureBufferName;
 		GRenderTargetPool.FindFreeElement(RHICommands, DiffuseOutputDesc, DiffusedTrailMapOutput, *TextureBufferName);
 	}
@@ -162,7 +162,7 @@ void UMoldV2ShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RHICom
 
 		const FString TextureBufferName = FString("DisplayTrailMap_Output_RenderTarget").Append(FString::SanitizeFloat(Random.FRand()));
 		
-		FPooledRenderTargetDesc DisplayOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DisplayTarget->SizeX, DisplayTarget->SizeY), DisplayTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		FPooledRenderTargetDesc DisplayOutputDesc(FPooledRenderTargetDesc::Create2DDesc(FIntPoint(DisplayTarget->SizeX, DisplayTarget->SizeY), DisplayTarget->GetRenderTargetResource()->TextureRHI->GetFormat(), FClearValueBinding::None, TexCreate_NoTiling, TexCreate_ShaderResource | TexCreate_UAV, false));
 		DisplayOutputDesc.DebugName = *TextureBufferName;
 		GRenderTargetPool.FindFreeElement(RHICommands, DisplayOutputDesc, DisplayTrailMapOutput, *TextureBufferName);
 	}
@@ -192,9 +192,15 @@ void UMoldV2ShaderComponent::ClearShader()
 void UMoldV2ShaderComponent::UpdateShader()
 {
 	for (int i = 0; i < StepsPerFrame; i++) {
-		UpdateMold();
-		DiffuseParticles();
-		MapColors();
+		ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
+		[&](FRHICommandListImmediate& RHICommands)
+		{
+			FRDGBuilder GraphBuilder(RHICommands, RDG_EVENT_NAME("MoldV2"));
+
+			UpdateMold_RenderThread(RHICommands, GraphBuilder);
+			DiffuseParticles_RenderThread(RHICommands, GraphBuilder);
+			MapColors_RenderThread(RHICommands, GraphBuilder);
+		});
 	}
 }
 
@@ -203,83 +209,83 @@ void UMoldV2ShaderComponent::TogglePaused()
 	IComputeShaderBase::TogglePaused();
 }
 
-void UMoldV2ShaderComponent::UpdateMold() {
-	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
-		[&](FRHICommandListImmediate& RHICommands)
+void UMoldV2ShaderComponent::UpdateMold_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder) {
+		CheckRenderBuffers(RHICommands);
+
+		if (Time > MoldV2Constants::StartDelay)
 		{
-			CheckRenderBuffers(RHICommands);
+			const TShaderMapRef<FUpdateShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			{
-				TShaderMapRef<FUpdateShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(GraphBuilder.RegisterExternalTexture(TrailMapOutput), ERDGUnorderedAccessViewFlags::SkipBarrier);
 
-				FUpdateShaderDeclaration::FParameters Params;
-				Params.SpeciesSettings = SpeciesBuffer.GetUAV();
-				Params.NumSpecies = NumSpecies;
-				Params.Agents = AgentsBuffer.GetUAV();
-				Params.NumAgents = AmountOfAgents;
-				Params.TrailMap = TrailMapOutput->GetRenderTargetItem().UAV.GetReference();
-				Params.Width = Width;
-				Params.Height = Height;
-				Params.TrailWeight = TrailWeight;
-				Params.DeltaTime = CurrentDeltaTime;
-				Params.Time = Time;
+			FUpdateShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FUpdateShaderDeclaration::FParameters>();
+			Params->SpeciesSettings = SpeciesBuffer.GetUAV();
+			Params->NumSpecies = NumSpecies;
+			Params->Agents = AgentsBuffer.GetUAV();
+			Params->NumAgents = AmountOfAgents;
+			Params->TrailMap = TargetUAV;
+			Params->Width = Width;
+			Params->Height = Height;
+			Params->TrailWeight = TrailWeight;
+			Params->DeltaTime = CurrentDeltaTime;
+			Params->Time = Time;
 
-				if (Time > MoldV2Constants::StartDelay)
-				{
-					FComputeShaderUtils::Dispatch(RHICommands, cs, Params, FIntVector(AmountOfAgents, 1, 1));
-				}
-			}
-		});
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("UpdateMoldV2Pass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(AmountOfAgents, 1, 1));
+		}
 }
 
-void UMoldV2ShaderComponent::DiffuseParticles() {
-	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner2)(
-		[&](FRHICommandListImmediate& RHICommands)
-		{
-			CheckRenderBuffers(RHICommands);
+void UMoldV2ShaderComponent::DiffuseParticles_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder) {
+	CheckRenderBuffers(RHICommands);
 
-			{
-				TShaderMapRef<FDiffuseShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+	{
+		const TShaderMapRef<FDiffuseShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-				FDiffuseShaderDeclaration::FParameters Params;
-				Params.TrailMap = TrailMapOutput->GetRenderTargetItem().UAV.GetReference();
-				Params.DiffusedMap = DiffusedTrailMapOutput->GetRenderTargetItem().UAV.GetReference();
-				Params.Width = Width;
-				Params.Height = Height;
-				Params.DeltaTime = CurrentDeltaTime;
-				Params.DecayRate = DecayRate;
-				Params.DiffuseRate = DiffuseRate;
+		const FRDGTextureRef SourceTexture = GraphBuilder.RegisterExternalTexture(TrailMapOutput);
+		const FRDGTextureRef TargetTexture = GraphBuilder.RegisterExternalTexture(DiffusedTrailMapOutput);
+		
+		FRDGTextureUAV* SourceUAV = GraphBuilder.CreateUAV(SourceTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
+		FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(TargetTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
 
-				FComputeShaderUtils::Dispatch(RHICommands, cs, Params, FIntVector(Width, Height, 1));
+		FDiffuseShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FDiffuseShaderDeclaration::FParameters>();
+		Params->TrailMap = SourceUAV;
+		Params->DiffusedMap = TargetUAV;
+		Params->Width = Width;
+		Params->Height = Height;
+		Params->DeltaTime = CurrentDeltaTime;
+		Params->DecayRate = DecayRate;
+		Params->DiffuseRate = DiffuseRate;
 
-				{
-					RHICommands.CopyTexture(DiffusedTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture, TrailMapOutput->GetRenderTargetItem().ShaderResourceTexture.GetReference(), FRHICopyTextureInfo());
-				}
-			}
-		});
+		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("DiffuseMoldV2Pass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(Width, Height, 1));
+
+		AddCopyTexturePass(GraphBuilder, TargetTexture, SourceTexture);
+	}
 }
 
-void UMoldV2ShaderComponent::MapColors() {
-	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner3)(
-		[&](FRHICommandListImmediate& RHICommands)
-		{
-			CheckRenderBuffers(RHICommands);
-			{
-				TShaderMapRef<FColorMapShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+void UMoldV2ShaderComponent::MapColors_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder) {
+	CheckRenderBuffers(RHICommands);
+	
+	{
+		const TShaderMapRef<FColorMapShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-				FColorMapShaderDeclaration::FParameters Params;
-				Params.SpeciesSettings = SpeciesBuffer.GetUAV();
-				Params.NumSpecies = NumSpecies;
-				Params.TrailMap = TrailMapOutput->GetRenderTargetItem().UAV.GetReference();
-				Params.Width = Width;
-				Params.Height = Height;
-				Params.ColorMap = DisplayTrailMapOutput->GetRenderTargetItem().UAV.GetReference();
+		const FRDGTextureRef SourceTexture = GraphBuilder.RegisterExternalTexture(TrailMapOutput);
+		const FRDGTextureRef DisplayTexture = GraphBuilder.RegisterExternalTexture(DisplayTrailMapOutput);
+		const FRDGTextureRef DisplayTargetTexture = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DisplayTarget->GetRenderTargetResource()->TextureRHI, TEXT("PerlinRenderTarget")));
+		
+		FRDGTextureUAV* SourceUAV = GraphBuilder.CreateUAV(SourceTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
+		FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(DisplayTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
 
-				FComputeShaderUtils::Dispatch(RHICommands, cs, Params, FIntVector(Width, Height, 1));
+		FColorMapShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FColorMapShaderDeclaration::FParameters>();
+		Params->SpeciesSettings = SpeciesBuffer.GetUAV();
+		Params->NumSpecies = NumSpecies;
+		Params->TrailMap = SourceUAV;
+		Params->Width = Width;
+		Params->Height = Height;
+		Params->ColorMap = TargetUAV;
 
-				{
-					RHICommands.CopyTexture(DisplayTrailMapOutput->GetRenderTargetItem().ShaderResourceTexture.GetReference(), DisplayTarget->GetRenderTargetResource()->TextureRHI.GetReference(), FRHICopyTextureInfo());
-				}
-			}
-		});
+		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("MapColorsPass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(Width, Height, 1));
+
+		AddCopyTexturePass(GraphBuilder, DisplayTexture, DisplayTargetTexture);
+		
+		GraphBuilder.Execute();
+	}
 }

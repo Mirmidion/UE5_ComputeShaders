@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include "CoreMinimal.h"
+#include "DataDrivenShaderPlatformInfo.h"
 #include "ShaderParameterStruct.h"
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 
@@ -25,9 +26,9 @@ class FBoidShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FBoidShaderDeclaration, FComputeShaderDeclaration);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<FAgent>, Agents)
-		SHADER_PARAMETER_UAV(RWTexture2D<float3>, Positions)
-		SHADER_PARAMETER_UAV(RWTexture2D<float>, Times)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FAgent>, Agents)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float3>, Positions)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, Times)
 	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
@@ -47,8 +48,8 @@ class FMoldShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FMoldShaderDeclaration, FComputeShaderDeclaration);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<FAgentV2>, Agents)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FAgentV2>, Agents)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
 		SHADER_PARAMETER(UINT, NumAgents) 
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
@@ -72,9 +73,9 @@ class FUpdateShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FUpdateShaderDeclaration, FComputeShaderDeclaration);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<FSpeciesSettings>, SpeciesSettings)
-		SHADER_PARAMETER_UAV(RWTexture2D<FAgentV2>, Agents)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FSpeciesSettings>, SpeciesSettings)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FAgentV2>, Agents)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
 		SHADER_PARAMETER(UINT, NumSpecies) 
 		SHADER_PARAMETER(UINT, NumAgents) 
 		SHADER_PARAMETER(int, Width) 
@@ -98,8 +99,8 @@ class FDiffuseShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FDiffuseShaderDeclaration, FComputeShaderDeclaration);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, DiffusedMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, DiffusedMap)
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
 		SHADER_PARAMETER(float, DeltaTime) 
@@ -121,9 +122,9 @@ class FColorMapShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FColorMapShaderDeclaration, FComputeShaderDeclaration);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<FSpeciesSettings>, SpeciesSettings)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, ColorMap)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FSpeciesSettings>, SpeciesSettings)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, ColorMap)
 		SHADER_PARAMETER(UINT, NumSpecies) 
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
@@ -145,7 +146,7 @@ class FPerlinShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FPerlinShaderDeclaration, FComputeShaderDeclaration);
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, NoiseMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, NoiseMap)
 		SHADER_PARAMETER(FIntVector2d, Dimensions) 
 		SHADER_PARAMETER(FVector3Float, Start) 
 		SHADER_PARAMETER(float, Offset) 
@@ -167,7 +168,7 @@ class FLinesShaderDeclaration : public FComputeShaderDeclaration
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float2>, Agents)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
 		SHADER_PARAMETER(int, NumAgents) 
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
@@ -189,7 +190,7 @@ class FMandelbrotShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FMandelbrotShaderDeclaration, FComputeShaderDeclaration);
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
 		SHADER_PARAMETER(FVector2Float, Center) 
@@ -213,7 +214,7 @@ class FLSystemShaderDeclaration : public FComputeShaderDeclaration
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<F2DLine>, Lines)
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
 		SHADER_PARAMETER(int, NumLines) 
 		SHADER_PARAMETER(float, Time)
 		SHADER_PARAMETER(float, PercentPerSecond)
@@ -233,7 +234,7 @@ class FClearShaderDeclaration : public FComputeShaderDeclaration
 	SHADER_USE_PARAMETER_STRUCT(FClearShaderDeclaration, FComputeShaderDeclaration);
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<float4>, TextureToClear)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TextureToClear)
 		SHADER_PARAMETER(int, Width) 
 		SHADER_PARAMETER(int, Height) 
 	END_SHADER_PARAMETER_STRUCT()

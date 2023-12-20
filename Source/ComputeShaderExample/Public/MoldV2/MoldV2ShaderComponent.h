@@ -90,9 +90,9 @@ private:
 	TStructuredBufferRW<FAgentV2> AgentsBuffer;
 	TStructuredBufferRW<FSpeciesSettings> SpeciesBuffer;
 	
-	void UpdateMold();
-	void DiffuseParticles();
-	void MapColors();
+	void UpdateMold_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder);
+	void DiffuseParticles_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder);
+	void MapColors_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder);
 
 	float CurrentDeltaTime;
 	float Time;

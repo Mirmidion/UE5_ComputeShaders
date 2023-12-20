@@ -36,17 +36,13 @@ void ULineShaderComponent::InitShader()
 	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
 
 	{
-		TResourceArray<FVector2Float> AgentsResourceArray;
+		TArray<FVector2Float> AgentsResourceArray;
 		AgentsResourceArray.Init(FVector2Float(), AmountOfAgents);
 
 		for (FVector2Float& Agent : AgentsResourceArray)
 			Agent = FVector2Float(0, 0);
 
-		FRHIResourceCreateInfo CreateInfo{ *FString("") };
-		CreateInfo.ResourceArray = &AgentsResourceArray;
-
-		AgentsBuffer = RHICreateStructuredBuffer(sizeof(FVector2Float), sizeof(FVector2Float) * AmountOfAgents, BUF_UnorderedAccess | BUF_ShaderResource, CreateInfo);
-		AgentsBufferUAV = RHICreateUnorderedAccessView(AgentsBuffer, false, false);
+		AgentsBuffer.Write(AgentsResourceArray);
 	}
 }
 
@@ -72,23 +68,32 @@ void ULineShaderComponent::UpdateShader() {
 		{
 			CheckRenderBuffers(RHICommands);
 
-			const TShaderMapRef<FLinesShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-
-			FLinesShaderDeclaration::FParameters Params;
-			Params.Agents = AgentsBufferUAV;
-			Params.TrailMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
-			Params.NumAgents = AmountOfAgents;
-			Params.Width = Width;
-			Params.Height = Height;
-			Params.DeltaTime = CurrentDeltaTime;
-			Params.Time = Time;
-
 			if (Time > 3)
 			{
-				FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(AmountOfAgents, 1, 1));
-			}
+				FRDGBuilder GraphBuilder(RHICommands, RDG_EVENT_NAME("UpdateRandomLines"));
 
-			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+				const TShaderMapRef<FLinesShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+
+				const FRDGTextureRef TargetTexture = GraphBuilder.RegisterExternalTexture(ComputeShaderOutput);
+				const FRDGTextureRef RenderTargetTexture = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(RenderTarget->GetRenderTargetResource()->TextureRHI, TEXT("LineRenderTarget")));
+				
+				FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(TargetTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
+
+				FLinesShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FLinesShaderDeclaration::FParameters>();
+				Params->Agents = AgentsBuffer.GetUAV();
+				Params->TrailMap = TargetUAV;
+				Params->NumAgents = AmountOfAgents;
+				Params->Width = Width;
+				Params->Height = Height;
+				Params->DeltaTime = CurrentDeltaTime;
+				Params->Time = Time;
+
+				FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("UpdateRandomLinesPass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(AmountOfAgents, 1, 1));
+
+				AddCopyTexturePass(GraphBuilder, TargetTexture,RenderTargetTexture);
+				
+				GraphBuilder.Execute();
+			}
 		});
 }
 

@@ -8,6 +8,7 @@
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 #include "RenderTargetPool.h"
+#include "StructuredBufferRW.h"
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "LSystemShaderComponent.generated.h"
 
@@ -25,7 +26,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	void CreateRenderTarget();
+	void CreateRenderTargets();
 
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -34,7 +35,6 @@ public:
 	virtual void InitShader() override;
 	void Reset();
 	void GenerateLines();
-	void CreateLineBuffer();
 	
 	UFUNCTION(BlueprintCallable)
 	virtual void UpdateShader() override;
@@ -114,9 +114,7 @@ private:
 	float PercentagePerSecond = 20;
 
 protected:
-	TResourceArray<F2DLine> Lines;
-	FBufferRHIRef LinesBuffer;
-	FUnorderedAccessViewRHIRef LinesBufferUAV;
+	TStructuredBufferRW<F2DLine> LinesBuffer;
 
 	float CurrentDeltaTime;
 	float Time;

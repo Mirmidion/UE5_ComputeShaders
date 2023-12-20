@@ -58,18 +58,27 @@ void UPerlinShaderComponent::UpdateShader() {
 		{
 			CheckRenderBuffers(RHICommands);
 
-			const TShaderMapRef<FPerlinShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			FRDGBuilder GraphBuilder(RHICommands, RDG_EVENT_NAME("GeneratePerlin"));
 
-			FPerlinShaderDeclaration::FParameters Params;
-			Params.NoiseMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
-			Params.Start = Position;
-			Params.Dimensions = Dimensions;
-			Params.Offset = Offset;
-			Params.Octaves = Octaves;
+			const TShaderMapRef<FPerlinShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(Dimensions.X, Dimensions.Y, 1));
+			const FRDGTextureRef TargetTexture = GraphBuilder.RegisterExternalTexture(ComputeShaderOutput);
+			const FRDGTextureRef RenderTargetTexture = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(RenderTarget->GetRenderTargetResource()->TextureRHI, TEXT("PerlinRenderTarget")));
+			
+			FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(TargetTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
 
-			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+			FPerlinShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FPerlinShaderDeclaration::FParameters>();
+			Params->NoiseMap = TargetUAV;
+			Params->Start = Position;
+			Params->Dimensions = Dimensions;
+			Params->Offset = Offset;
+			Params->Octaves = Octaves;
+
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("GeneratePerlinPass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(Dimensions.X, Dimensions.Y, 1));
+
+			AddCopyTexturePass(GraphBuilder, TargetTexture, RenderTargetTexture);
+			
+			GraphBuilder.Execute();
 		});
 }
 

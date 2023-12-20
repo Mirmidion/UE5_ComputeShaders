@@ -61,26 +61,37 @@ void UMandelbrotShaderComponent::CheckRenderBuffers(FRHICommandListImmediate& RH
 }
 
 void UMandelbrotShaderComponent::UpdateShader() {
+	
 	ZoomLevel = 1.f / FMath::Pow(Zoom,Zoom);
+	
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 		[&](FRHICommandListImmediate& RHICommands)
 		{
 			CheckRenderBuffers(RHICommands);
 
-			TShaderMapRef<FMandelbrotShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			FRDGBuilder GraphBuilder(RHICommands, RDG_EVENT_NAME("Mandelbrot"));
 
-			FMandelbrotShaderDeclaration::FParameters Params;
-			Params.TrailMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
-			Params.Width = Width;
-			Params.Height = Height;
-			Params.Center = Center;
-			Params.Zoom = ZoomLevel;
-			Params.Iterations = Iterations;
-			Params.Mode = Mode;
+			const TShaderMapRef<FMandelbrotShaderDeclaration> CS(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			FComputeShaderUtils::Dispatch(RHICommands, cs, Params, FIntVector(Width, Height, 1));
+			const FRDGTextureRef TargetTexture = GraphBuilder.RegisterExternalTexture(ComputeShaderOutput);
+			const FRDGTextureRef RenderTargetTexture = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(RenderTarget->GetRenderTargetResource()->TextureRHI, TEXT("MandelbrotRenderTarget")));
+			
+			FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(TargetTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
 
-			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+			FMandelbrotShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FMandelbrotShaderDeclaration::FParameters>();
+			Params->TrailMap = TargetUAV;
+			Params->Width = Width;
+			Params->Height = Height;
+			Params->Center = Center;
+			Params->Zoom = ZoomLevel;
+			Params->Iterations = Iterations;
+			Params->Mode = Mode;
+
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("MandelbrotPass"), ERDGPassFlags::Compute, CS, Params, FIntVector(Width, Height, 1));
+
+			AddCopyTexturePass(GraphBuilder, TargetTexture, RenderTargetTexture);
+			
+			GraphBuilder.Execute();
 		});
 }
 

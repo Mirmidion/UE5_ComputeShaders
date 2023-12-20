@@ -27,12 +27,12 @@ void ULSystemShaderComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	CreateRenderTarget();
+	CreateRenderTargets();
 	
 	InitShader();
 }
 
-void ULSystemShaderComponent::CreateRenderTarget()
+void ULSystemShaderComponent::CreateRenderTargets()
 {
 	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(GetWorld(), Width, Height, RTF_RGBA8);
 	RenderTarget->LODGroup = TEXTUREGROUP_EffectsNotFiltered;
@@ -44,21 +44,19 @@ void ULSystemShaderComponent::InitShader()
 	
 	GenerateLines();
 
-	CreateLineBuffer();
-	
 	ClearShader();
 }
 
 void ULSystemShaderComponent::Reset()
 {
-	Lines.Empty();
-
 	Time = 0;
 	BufferTime = 0;
 }
 
 void ULSystemShaderComponent::GenerateLines()
 {
+	TArray<F2DLine> Lines;
+	
 	TArray<FVector2D> PositionStack;
 	TArray<float> RotationStack;
 	FVector2D CurrentLocation = FVector2D(0, 0);
@@ -192,27 +190,9 @@ void ULSystemShaderComponent::GenerateLines()
 		Lines.Add(F2DLine());
 
 	AmountOfLines = Lines.Num();
-}
 
-void ULSystemShaderComponent::CreateLineBuffer()
-{
-	if (LinesBuffer.IsValid())
-	{
-		LinesBuffer.SafeRelease();
-	}
-
-	if (LinesBufferUAV.IsValid())
-	{
-		LinesBufferUAV.SafeRelease();
-	}
-	
 	UE_LOG(LogLSystemShader, Log, TEXT("Creating lines buffer with %d lines"), Lines.Num())
-	
-	FRHIResourceCreateInfo CreateInfo{ *FString("LineBufferInfo") };
-	CreateInfo.ResourceArray = &Lines;
-
-	LinesBuffer = RHICreateStructuredBuffer(sizeof(F2DLine), sizeof(F2DLine) * Lines.Num(), BUF_UnorderedAccess | BUF_ShaderResource, CreateInfo);
-	LinesBufferUAV = RHICreateUnorderedAccessView(LinesBuffer, false, false);
+	LinesBuffer.Write(Lines);
 }
 
 void ULSystemShaderComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -378,21 +358,29 @@ void ULSystemShaderComponent::UpdateShader() {
 		{
 			CheckRenderBuffers(RHICommands);
 
-			const TShaderMapRef<FLSystemShaderDeclaration> Shader(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-
-			FLSystemShaderDeclaration::FParameters Params;
-			Params.Lines = LinesBufferUAV.GetReference();
-			Params.TrailMap = ComputeShaderOutput->GetRenderTargetItem().UAV;
-			Params.NumLines = AmountOfLines;
-			Params.Time = BufferTime;
-			Params.PercentPerSecond = PercentagePerSecond;
-
 			if (Time > LSystemConstants::StartDelay)
 			{
-				FComputeShaderUtils::Dispatch(RHICommands, Shader, Params, FIntVector(AmountOfLines, 1, 1));
-			}
+				FRDGBuilder GraphBuilder(RHICommands, RDG_EVENT_NAME("LSystem"));
 
-			RHICommands.CopyTexture(ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, RenderTarget->GetRenderTargetResource()->TextureRHI, FRHICopyTextureInfo());
+				const FRDGTextureRef TargetTexture = GraphBuilder.RegisterExternalTexture(ComputeShaderOutput);
+				const FRDGTextureRef RenderTargetTexture = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(RenderTarget->GetRenderTargetResource()->TextureRHI, TEXT("LSystemRenderTarget")));
+				
+				FRDGTextureUAV* TargetUAV = GraphBuilder.CreateUAV(TargetTexture, ERDGUnorderedAccessViewFlags::SkipBarrier);
+
+				FLSystemShaderDeclaration::FParameters* Params = GraphBuilder.AllocParameters<FLSystemShaderDeclaration::FParameters>();
+				Params->Lines = LinesBuffer.GetUAV();
+				Params->TrailMap = TargetUAV;
+				Params->NumLines = AmountOfLines;
+				Params->Time = BufferTime;
+				Params->PercentPerSecond = PercentagePerSecond;
+
+				const TShaderMapRef<FLSystemShaderDeclaration> Shader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+				FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("LSystemPass"), ERDGPassFlags::Compute, Shader, Params, FIntVector(AmountOfLines, 1, 1));
+
+				AddCopyTexturePass(GraphBuilder, TargetTexture, RenderTargetTexture);
+				
+				GraphBuilder.Execute();
+			}
 		});
 }
 

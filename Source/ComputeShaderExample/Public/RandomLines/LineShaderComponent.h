@@ -8,6 +8,7 @@
 #include "Components/ActorComponent.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 #include "RenderTargetPool.h"
+#include "StructuredBufferRW.h"
 #include "TypeDefinitions/CustomTypeDefinitions.h"
 #include "LineShaderComponent.generated.h"
 
@@ -47,8 +48,7 @@ public:
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 
 protected:
-	FBufferRHIRef AgentsBuffer;
-	FUnorderedAccessViewRHIRef AgentsBufferUAV;
+	TStructuredBufferRW<FVector2Float> AgentsBuffer;
 
 	float CurrentDeltaTime;
 	float Time;

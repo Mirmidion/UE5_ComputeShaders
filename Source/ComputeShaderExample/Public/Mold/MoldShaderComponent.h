@@ -59,11 +59,10 @@ public:
 	TRefCountPtr<IPooledRenderTarget> BufferShaderOutput;
 
 private:
-	void UpdateMold();
-	void DiffuseParticles();
+	void UpdateMold_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder);
+	void DiffuseParticles_RenderThread(FRHICommandListImmediate& RHICommands, FRDGBuilder& GraphBuilder);
 
-	FBufferRHIRef AgentsBuffer;
-	FUnorderedAccessViewRHIRef AgentsBufferUAV;
+	TStructuredBufferRW<FAgent> AgentsBuffer;
 
 	float CurrentDeltaTime;
 	float Time;
