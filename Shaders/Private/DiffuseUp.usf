@@ -1,0 +1,53 @@
+#include "/Engine/Public/Platform.ush"
+
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWTexture2D<float4> TrailMap;
+RWTexture2D<float4> DiffusedMap;
+
+//--------------------------------------------------------------------------------------
+// Variables
+//--------------------------------------------------------------------------------------
+
+int Width;
+int Height;
+
+float DeltaTime;
+
+float DecayRate;
+float DiffuseRate;
+
+[numthreads(8,8,1)]
+void Diffuse (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < 0 || id.x >= (uint)Width || id.y < 0 || id.y >= (uint)Height) {
+		return;
+	}
+
+	float4 sum = 0;
+	const float4 original_color = TrailMap[id.xy];
+	// 3x3 blur
+	//for (int x_offset = -1; x_offset <= -1; x_offset ++) {
+		for (int y_offset = -20; y_offset <= -1; y_offset ++) {
+			int x_sample = min(Width-1, max(0, id.x));
+			int y_sample = min(Height-1, max(0, id.y + y_offset));
+			sum += TrailMap[int2(x_sample,y_sample)];
+		}
+	//}
+
+	float4 blurred_color = sum / 2.f;
+	const float diffuse_weight = saturate(DiffuseRate * DeltaTime);
+	blurred_color = original_color * (1 - diffuse_weight) + blurred_color * (diffuse_weight);
+
+	int x_sample = min(Width-1, max(0, id.x));
+	int y_sample = min(Height-1, max(0, id.y + 2));
+	//diffused_map[id.xy] = blurred_color * saturate(1 - decay_rate * delta_time);
+	DiffusedMap[id.xy] = TrailMap[int2(x_sample,y_sample)] * 0.95f; //max(0, blurred_color - DecayRate * DeltaTime);
+
+	if (DiffusedMap[id.xy].x < 0.05f)
+	{
+		DiffusedMap[id.xy] = float4(0,0,0,1);
+	}
+}

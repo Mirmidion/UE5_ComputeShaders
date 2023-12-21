@@ -245,3 +245,48 @@ class FClearShaderDeclaration : public FComputeShaderDeclaration
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
 };
+
+class FDecayingLineShaderDeclaration : public FComputeShaderDeclaration
+{
+	DECLARE_GLOBAL_SHADER(FDecayingLineShaderDeclaration);
+
+	SHADER_USE_PARAMETER_STRUCT(FDecayingLineShaderDeclaration, FComputeShaderDeclaration);
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, Texture)
+		SHADER_PARAMETER(FIntVector2d, Dimensions) 
+		SHADER_PARAMETER(FVector3Float, Start) 
+		SHADER_PARAMETER(float, Offset) 
+		SHADER_PARAMETER(float, Time) 
+		SHADER_PARAMETER(int, Octaves) 
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+};
+
+class FDiffuseUpShaderDeclaration : public FComputeShaderDeclaration
+{
+	DECLARE_SHADER_TYPE(FDiffuseUpShaderDeclaration, Global);
+
+	SHADER_USE_PARAMETER_STRUCT(FDiffuseUpShaderDeclaration, FComputeShaderDeclaration);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, TrailMap)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, DiffusedMap)
+		SHADER_PARAMETER(int, Width) 
+		SHADER_PARAMETER(int, Height) 
+		SHADER_PARAMETER(float, DeltaTime) 
+		SHADER_PARAMETER(float, DecayRate) 
+		SHADER_PARAMETER(float, DiffuseRate) 
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+};

@@ -113,8 +113,6 @@ public:
 	}
 };
 
-
-
 template<>
 struct TShaderParameterTypeInfo<FVector2Float>
 {

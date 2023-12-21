@@ -99,4 +99,29 @@ void FClearShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPe
 	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
 }
 
-IMPLEMENT_SHADER_TYPE(, FClearShaderDeclaration, TEXT("/ComputeShaderPlugin/ClearCS.usf"), TEXT("ClearTexture"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(, FClearShaderDeclaration, TEXT("/ComputeShaderPlugin/ClearCS.usf"), TEXT("ClearTexture"),
+						SF_Compute);
+
+void FDecayingLineShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+	FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FDecayingLineShaderDeclaration, TEXT("/ComputeShaderPlugin/NoiseLine.usf"), TEXT("Generate"),
+						SF_Compute);
+
+void FDiffuseUpShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+	FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.CompilerFlags.Add(CFLAG_AllowTypedUAVLoads);
+}
+
+IMPLEMENT_SHADER_TYPE(, FDiffuseUpShaderDeclaration, TEXT("/ComputeShaderPlugin/DiffuseUp.usf"), TEXT("Diffuse"),
+						SF_Compute);
+
+

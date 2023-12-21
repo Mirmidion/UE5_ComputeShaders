@@ -66,5 +66,5 @@ public:
 	int Mode = 0;
 
 private:
-	float ZoomLevel;
+	double ZoomLevel;
 };
